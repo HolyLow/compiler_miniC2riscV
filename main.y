@@ -24,9 +24,9 @@ Goal    : GlobalD MainFunc {
         	printf("Goal recognized!\n");
           }
         ;
-GlobalD : VarDefn GlobalD
-        | FuncDefn GlobalD
-        | FuncDecl GlobalD
+GlobalD : GlobalD VarDefn
+        | GlobalD FuncDefn
+        | GlobalD FuncDecl
         |
         ;
 MainFunc : INT {printf("before main\n");} MAIN {printf("after main\n");} '(' ')' '{' StatementPack '}' %prec MAIN
