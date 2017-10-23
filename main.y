@@ -18,12 +18,11 @@
 %left  '+' '-'
 %left  '*' '/' '%'
 %right UMINUS '!'
-%nonassoc MAIN
 %%
 Goal
 : GlobalD MainFunc {
-        	printf("Goal recognized!\n");
-          }
+  printf("Goal recognized!\n");
+}
 ;
 GlobalD
 : GlobalD VarDefn
@@ -32,7 +31,13 @@ GlobalD
 |
 ;
 MainFunc
-: INT {printf("before main\n");} MAIN {printf("after main\n");} '(' ')' '{' StatementPack '}' %prec MAIN
+: INT {
+    printf("before main\n");
+}
+  MAIN {
+    printf("after main\n");
+  }
+  '(' ')' '{' StatementPack '}'
 ;
 VarDefn
 : Type Identifier ';'
@@ -67,35 +72,26 @@ Statement
 | RETURN Expression ';'
 ;
 StatementPack
-: Statement StatementPack
+: StatementPack Statement
 |
 ;
 Expression
-: NUM Expression_1
-| Identifier Expression_1
-| Operator_1 Expression Expression_1
-| Identifier '(' ExpressionList ')' Expression_1
-;
-Expression_1
-: Operator_2 Expression Expression_1
-| '[' Expression ']' Expression_1
-|
-;
-Operator_2
-: '+'
-| '-'
-| '*'
-| '/'
-| AND
-| OR
-| EQ
-| NE
-| LT
-| GT
-;
-Operator_1
-: '-'
-| '!'
+: NUM
+| Identifier
+| '-' Expression %prec UMINUS
+| '!' Expression
+| Identifier '(' ExpressionList ')'
+| Expression '[' Expression ']'
+| Expression '+' Expression
+| Expression '-' Expression
+| Expression '*' Expression
+| Expression '/' Expression
+| Expression AND Expression
+| Expression OR Expression
+| Expression EQ Expression
+| Expression NE Expression
+| Expression LT Expression
+| Expression GT Expression
 ;
 ExpressionList
 : Expression ExpressionAppend
