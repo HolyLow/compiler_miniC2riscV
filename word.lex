@@ -1,5 +1,11 @@
 %{
+#include "node.h"
+#define YYSTYPE Nodes
 #include "main.tab.h"
+/*#ifdef YYSTYPE
+ #undef YYSTYPE
+#endif*/
+extern Nodes yylval;
 %}
 
 delim   [\ \t\n]
@@ -14,21 +20,21 @@ num     ([1-9]+{digit}*)|0
 
 ws        ;
 {comment} ;
-int       { yylval = strdup(yytext); printf("get int\n"); return INT; }
-main      { yylval = strdup(yytext); printf("get main\n"); return MAIN; }
-return    { yylval = strdup(yytext); printf("get return\n"); return RETURN; }
-while     { yylval = strdup(yytext); return WHILE; }
-if        { yylval = strdup(yytext); return IF; }
-else      { yylval = strdup(yytext); return ELSE; }
-{id}      { yylval = strdup(yytext); printf("get ID \"%s\"\n", yytext); return ID; }
-{num}     { yylval = strdup(yytext); return NUM; }
-&&        { yylval = strdup(yytext); return AND; }
-"||"      { yylval = strdup(yytext); return OR; }
-==        { yylval = strdup(yytext); return EQ; }
-!=        { yylval = strdup(yytext); return NE; }
-"<"       { yylval = strdup(yytext); return LT; }
->         { yylval = strdup(yytext); return GT; }
-[\{\}\[\]\(\)\+\-\*\/\!\;\=]         { yylval = strdup(yytext); printf("get \"%s\"\n", yytext); return yytext[0]; }
+int       { yylval.str = strdup(yytext); printf("get int\n"); return WORD_INT; }
+main      { yylval.str = strdup(yytext); printf("get main\n"); return MAIN; }
+return    { yylval.str = strdup(yytext); printf("get return\n"); return RETURN; }
+while     { yylval.str = strdup(yytext); return WHILE; }
+if        { yylval.str = strdup(yytext); return IF; }
+else      { yylval.str = strdup(yytext); return ELSE; }
+{id}      { yylval.str = strdup(yytext); printf("get ID \"%s\"\n", yytext); return ID; }
+{num}     { yylval.num = atoi(yytext);   return NUM; }
+&&        { yylval.str = strdup(yytext); return AND; }
+"||"      { yylval.str = strdup(yytext); return OR; }
+==        { yylval.str = strdup(yytext); return EQ; }
+!=        { yylval.str = strdup(yytext); return NE; }
+"<"       { yylval.str = strdup(yytext); return LT; }
+>         { yylval.str = strdup(yytext); return GT; }
+[\{\}\[\]\(\)\+\-\*\/\!\;\=]         { yylval.str = strdup(yytext); printf("get \"%s\"\n", yytext); return yytext[0]; }
 
 %%
 int yywrap()
