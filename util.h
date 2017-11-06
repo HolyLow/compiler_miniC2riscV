@@ -37,6 +37,7 @@ struct FuncToken {
     param_list = paramlist;
     return_type = ty;
     isDefined = isDef;
+    eeyore_name = string("f_") + minic_name;
   }
 };
 
@@ -45,9 +46,10 @@ struct VarToken {
   string minic_name;
   string eeyore_name;
   VarToken() {}
-  VarToken(string name, TokenType ty) {
+  VarToken(string name, TokenType ty, string ename) {
     minic_name = name;
     type = ty;
+    eeyore_name = ename;
   }
 };
 
@@ -84,13 +86,13 @@ public:
     map<string, FuncToken>::iterator it_func = functoken.find(name);
     return (it_var != vartoken.end() || it_func != functoken.end());
   }
-  void insertVarToken(string name, TokenType type) {
+  void insertVarToken(string name, TokenType type, string ename) {
     if(findToken(name)) {
       char msg[100];
       sprintf(msg, "duplicated definition of %s", name.c_str());
       error(msg);
     }
-    vartoken[name] = VarToken(name, type);
+    vartoken[name] = VarToken(name, type, ename);
   }
 /* if a function is not found declared or defined, simply insert it with the isDef
  * tag to declare or define it;
@@ -116,6 +118,32 @@ public:
         sprintf(msg, "duplicated definition of %s", name.c_str());
         error(msg);
       }
+    }
+  }
+  string searchToken(string name, bool isVar) {
+    if(isVar) {
+      map<string, VarToken>::iterator it = vartoken.find(name);
+      if(it == vartoken.end()) {
+        if(_parent == NULL) {
+          char msg[100];
+          sprintf(msg, "undefined variable %s", name.c_str());
+          error(msg);
+        }
+        else return _parent->searchToken(name, isVar);
+      }
+      else return it->second.eeyore_name;
+    }
+    else {
+      map<string, FuncToken>::iterator it = functoken.find(name);
+      if(it == functoken.end()) {
+        if(_parent == NULL) {
+          char msg[100];
+          sprintf(msg, "undefined variable %s", name.c_str());
+          error(msg);
+        }
+        else return _parent->searchToken(name, isVar);
+      }
+      else return it->second.eeyore_name;
     }
   }
 

@@ -12,6 +12,8 @@ int yylex();
 
 Env *root_env, *last_env, *this_env;
 
+int ori_var_cnt, tmp_var_cnt;
+
 void StartNewEnv()
 {
   last_env = this_env;
@@ -24,16 +26,45 @@ void RollBackEnv()
   this_env = last_env;
 }
 
-void AddVarToken(string id, TokenType type)
+void AddVarToken(string id, TokenType type, string ename)
 {
-  this_env->insertVarToken(id, type);
+  this_env->insertVarToken(id, type, ename);
 }
 
-void AddFuncToken(string id, ParamList param_list, TokenType return_type, bool isDef)
+void AddFuncToken(string id, VarList var_list, TokenType return_type, bool isDef)
 {
-  this_env->insertFuncToken(id, param_list, return_type, isDef);
+  ParamList plist; plist.clear();
+  VarList::iterator it;
+  for(it = var_list.begin(); it != var_list.end(); it++) {
+    plist.push_back(it->type);
+  }
+  this_env->insertFuncToken(id, plist, return_type, isDef);
 }
 
+string SearchToken(string id, bool isVar)
+{
+  return this_env->searchToken(id, isVar);
+}
+
+void TransUnaryOp(Expr & result, Expr & right, char *op)
+{
+  char exp[100];
+  char tmp[10];
+  sprintf(tmp, "t%d", tmp_var_cnt++);
+  sprintf(exp, "var %s\n%s = %s %s\n", tmp, tmp, op, right.result.c_str());
+  result.code = right.code + string(exp);
+  result.result = string(tmp);
+}
+
+void TransBinaryOp(Expr & result, Expr & left, Expr & right, char *op)
+{
+  char exp[100];
+  char tmp[10];
+  sprintf(tmp, "t%d", tmp_var_cnt++);
+  sprintf(exp, "var %s\n%s = %s %s %s\n", tmp, tmp, left.result.c_str(), op, right.result.c_str());
+  result.code = left.code + right.code + string(exp);
+  result.result = string(tmp);
+}
 
 int yyerror(char *msg)
 {
@@ -57,15 +88,19 @@ int yyerror(char *msg)
 %type <func> FuncDefn MainFunc
 %type <stat> Statement
 %type <iden> Identifier
-%type <type> Type VarDecl
-%type <param_list> VarDeclPack
-%type <part> Goal GlobalD VarDefn StatementPack ExpressionList ExpressionAppend
+%type <type> Type ParamDecl
+%type <param_list> ParamDeclPack
+%type <var_info> ParamDefn
+%type <var_list> ParamDefnPack
+%type <expr_list> ExpressionList ExpressionAppend
+%type <part> Goal GlobalD VarDefn StatementPack
 
 
 %token IF ELSE WHILE RETURN MAIN
 %token WORD_INT
 %token <str>  ID
-%token <num> NUM
+/*%token <num> NUM*/
+%token <str> NUM
 %token AND OR EQ NE LT GT
 %left  ','
 %right '='
@@ -83,10 +118,10 @@ Goal
 }
 ;
 GlobalD
-: GlobalD VarDefn
-| GlobalD FuncDefn
-| GlobalD FuncDecl
-|
+: GlobalD VarDefn  { $$.code = $1.code + $2.code; }
+| GlobalD FuncDefn { $$.code = $1.code + $2.code; }
+| GlobalD FuncDecl { $$.code = $1.code; }
+| { $$.code.clear(); }
 ;
 MainFunc
 : WORD_INT { printf("before main\n"); }
@@ -95,24 +130,55 @@ MainFunc
   StatementPack '}' { RollBackEnv(); }
 ;
 VarDefn
-: Type Identifier ';' { AddVarToken($2, $1); }
-| Type Identifier '[' NUM ']' ';' { AddVarToken($2, Array($1)); }
+: Type Identifier ';' {
+    char eeyore_name[10];
+    sprintf(eeyore_name, "T%d", ori_var_cnt++);
+    AddVarToken($2, $1, string(eeyore_name));
+    char code[100];
+    sprintf(code, "var %s\n", eeyore_name);
+    $$.code = code;
+  }
+| Type Identifier '[' NUM ']' ';' {
+    char eeyore_name[10];
+    sprintf(eeyore_name, "T%d", ori_var_cnt++);
+    AddVarToken($2, Array($1), string(eeyore_name));
+    char code[100];
+    sprintf(code, "var %d %s\n", 4*atoi($4), eeyore_name);
+    $$.code = code;
+  }
 ;
-VarDecl
+/*ParamDecl
 : Type Identifier { $$ = $1; }
 | Type Identifier '[' NUM ']' { $$ = Array($1); }
 ;
-VarDeclPack
-: VarDeclPack VarDecl { $$ = $1; $$.insert($$.end(), $2); }
+ParamDeclPack
+: ParamDeclPack ParamDecl { $$ = $1; $$.insert($$.end(), $2); }
+| { $$.clear(); }
+;*/
+ParamDefn
+: Type Identifier { $$.type = $1; $$.minic_name = $2; }
+| Type Identifier '[' NUM ']' { $$.type = Array($1); $$.minic_name = $2; }
+;
+ParamDefnPack
+: ParamDefnPack ParamDefn { $$ = $1; $$.insert($$.end(), $2); }
 | { $$.clear(); }
 ;
 FuncDefn
-: Type Identifier '(' VarDeclPack ')'  { AddFuncToken($2, $4, $1, true); }
-  '{' { StartNewEnv(); }
+: Type Identifier '(' ParamDefnPack ')'  { AddFuncToken($2, $4, $1, true); }
+  '{' {
+    StartNewEnv();
+    VarList::iterator it;
+    int param_cnt = 0;
+    for(it = $4.begin(); it != $4.end(); it++) {
+      char ename[10];
+      sprintf(ename, "p%d", param_cnt++);
+      AddVarToken(it->minic_name, it->type, string(ename));
+    }
+  }
   StatementPack '}' { RollBackEnv(); }
 ;
 FuncDecl
-: Type Identifier '(' VarDeclPack ')' ';' { AddFuncToken($2, $4, $1, false); }
+: Type Identifier '(' ParamDefnPack ')' ';' { AddFuncToken($2, $4, $1, false); }
 ;
 Type
 : WORD_INT { $$ = INT; }
@@ -134,30 +200,62 @@ StatementPack
 |
 ;
 Expression
-: NUM
-| Identifier
-| '-' Expression %prec UMINUS
-| '!' Expression
-| Identifier '(' ExpressionList ')'
-| Expression '[' Expression ']'
-| Expression '+' Expression
-| Expression '-' Expression
-| Expression '*' Expression
-| Expression '/' Expression
-| Expression AND Expression
-| Expression OR  Expression
-| Expression EQ  Expression
-| Expression NE  Expression
-| Expression LT  Expression
-| Expression GT  Expression
+: NUM { $$.result = string($1); $$.code.clear(); }
+| Identifier { $$.result = SearchToken($1, true); $$.code.clear(); }
+| '-' Expression %prec UMINUS { TransUnaryOp($$, $2, "-"); }
+| '!' Expression              { TransUnaryOp($$, $2, "!"); }
+| Identifier '(' ExpressionList ')' {
+    string iden = SearchToken($1, false);
+    char exp[500]; exp[0] = '\0';
+    char tmp[10];
+    sprintf(tmp, "t%d", tmp_var_cnt++);
+    int param_cnt = 0;
+    list<string>::iterator it;
+    for(it = $3.result_list.begin(); it != $3.result_list.end(); it++) {
+      sprintf(exp, "%sparam %s\n", exp, it->c_str());
+    }
+    sprintf(exp, "%svar %s\n%s = call %s\n", exp, tmp, tmp, iden.c_str());
+    $$.code = $3.code + string(exp);
+    $$.result = string(tmp);
+  }
+| Expression '[' Expression ']' {
+    char exp[100];
+    char tmp[10];
+    sprintf(tmp, "t%d", tmp_var_cnt++);
+    sprintf(exp, "var %s\n%s = %s [%s]\n", tmp, tmp, $1.result.c_str(), $3.result.c_str());
+    $$.code = $1.code + $3.code + string(exp);
+    $$.result = string(tmp);
+  }
+| Expression '+' Expression { TransBinaryOp($$, $1, $3, "+"); }
+| Expression '-' Expression { TransBinaryOp($$, $1, $3, "-"); }
+| Expression '*' Expression { TransBinaryOp($$, $1, $3, "*"); }
+| Expression '/' Expression { TransBinaryOp($$, $1, $3, "/"); }
+| Expression AND Expression { TransBinaryOp($$, $1, $3, "&&"); }
+| Expression OR  Expression { TransBinaryOp($$, $1, $3, "||"); }
+| Expression EQ  Expression { TransBinaryOp($$, $1, $3, "=="); }
+| Expression NE  Expression { TransBinaryOp($$, $1, $3, "!="); }
+| Expression LT  Expression { TransBinaryOp($$, $1, $3, "<"); }
+| Expression GT  Expression { TransBinaryOp($$, $1, $3, ">"); }
 ;
 ExpressionList
-: Expression ExpressionAppend
-|
+: Expression ExpressionAppend  {
+    $$.result_list.clear();
+    $$.code.clear();
+    $$.result_list.push_back($1.result);
+    $$.result_list.insert($$.result_list.end(), $2.result_list.begin(), $2.result_list.end());
+    $$.code = $1.code + $2.code;
+  }
+| { $$.result_list.clear(); $$.code.clear(); }
 ;
 ExpressionAppend
-: ',' Expression ExpressionAppend
-|
+: ',' Expression ExpressionAppend {
+    $$.result_list.clear();
+    $$.code.clear();
+    $$.result_list.push_back($2.result);
+    $$.result_list.insert($$.result_list.end(), $3.result_list.begin(), $3.result_list.end());
+    $$.code = $2.code + $3.code;
+  }
+| { $$.result_list.clear(); $$.code.clear(); }
 ;
 Identifier
 : ID { $$ = $1; }
@@ -170,6 +268,8 @@ int main()
   root_env = new Env(NULL);
   last_env = NULL;
   this_env = root_env;
+  ori_var_cnt = 0;
+  tmp_var_cnt = 0;
   yyparse();
   return 0;
 }

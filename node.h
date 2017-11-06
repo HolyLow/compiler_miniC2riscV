@@ -5,36 +5,44 @@
 using namespace std;
 
 
-struct Part {
+typedef struct Part {
   string code;
-};
+}Part;
 
 
-struct Expr {
+typedef struct Expr {
   string code;
+  string result;
+}Expr;
 
-};
-
-struct Func {
+typedef struct Func {
   string code;
-};
+}Func;
 
-struct Stat {
+typedef struct Stat {
   string code;
-};
+}Stat;
 
-struct Iden {
+typedef struct Iden {
   string code;
-};
+}Iden;
+
+typedef struct ExprList {
+  string code;
+  list<string> result_list;
+}ExprList;
 
 typedef struct Nodes {
-  struct Expr expr;
-  struct Func func;
-  struct Stat stat;
+  Expr        expr;
+  Func        func;
+  Stat        stat;
   string      iden;
-  struct Part part;
+  Part        part;
   TokenType   type;
   ParamList   param_list;
+  VarToken    var_info;
+  VarList     var_list;
+  ExprList    expr_list;
   char * str;
   int    num;
 } Nodes;
