@@ -363,12 +363,14 @@ Expression
 | Expression '-' Expression { TransBinaryOp($$, $1, $3, "-"); }
 | Expression '*' Expression { TransBinaryOp($$, $1, $3, "*"); }
 | Expression '/' Expression { TransBinaryOp($$, $1, $3, "/"); }
+| Expression '%' Expression { TransBinaryOp($$, $1, $3, "%"); }
 | Expression AND Expression { TransBinaryOp($$, $1, $3, "&&"); }
 | Expression OR  Expression { TransBinaryOp($$, $1, $3, "||"); }
 | Expression EQ  Expression { TransBinaryOp($$, $1, $3, "=="); }
 | Expression NE  Expression { TransBinaryOp($$, $1, $3, "!="); }
 | Expression LT  Expression { TransBinaryOp($$, $1, $3, "<"); }
 | Expression GT  Expression { TransBinaryOp($$, $1, $3, ">"); }
+| '(' Expression ')' { $$ = $2; }
 ;
 ExpressionList
 : Expression ExpressionAppend  {

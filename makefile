@@ -2,8 +2,8 @@ CC = g++
 LEX = flex -v
 YACC = bison -d
 
-main: lex.yy.o main.tab.o
-	$(CC) -o main lex.yy.o main.tab.o
+a.out: lex.yy.o main.tab.o
+	$(CC) -o a.out lex.yy.o main.tab.o
 
 lex.yy.o: lex.yy.c main.tab.h util.h node.h
 
