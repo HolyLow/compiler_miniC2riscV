@@ -120,9 +120,9 @@ int yyerror(char *msg)
 %%
 Goal
 : GlobalD MainFunc {
-  printf("Goal recognized!\n");
+  //printf("Goal recognized!\n");
   $$.code = $1.code + $2.code;
-  printf("translated eeyore code:\n%s", $$.code.c_str());
+  printf("%s", $$.code.c_str());
 }
 ;
 GlobalD
@@ -142,7 +142,9 @@ MainFunc
     char func_label[50];
     string iden = SearchToken(string("main"), false)->eeyore_name;
     sprintf(func_label, "%s [%d]\n", iden.c_str(), 0);
-    $$.code = string(func_label) + $8.code;
+    char func_end[50];
+    sprintf(func_end, "end f_main\n");
+    $$.code = string(func_label) + $8.code + string(func_end);
   }
 ;
 VarDefn
@@ -196,7 +198,9 @@ FuncDefn
     char func_label[50];
     string iden = SearchToken($2, false)->eeyore_name;
     sprintf(func_label, "%s [%d]\n", iden.c_str(), $4.size());
-    $$.code = string(func_label) + $9.code;
+    char func_end[50];
+    sprintf(func_end, "end %s\n", iden.c_str());
+    $$.code = string(func_label) + $9.code + string(func_end);
   }
 ;
 FuncDecl
@@ -258,7 +262,10 @@ Statement
     this_env->check(!isArray($6.type), "invalid assignment from array to non-array", "");
     string iden = token->eeyore_name;
     char exp[100];
-    sprintf(exp, "%s [%s] = %s\n", iden.c_str(), $3.result.c_str(), $6.result.c_str());
+    char exp2[100], tmp[10];
+    sprintf(tmp, "t%d", tmp_var_cnt++);
+    sprintf(exp2, "var %s\n%s = 4 * %s\n", tmp, tmp, $3.result.c_str());
+    sprintf(exp, "%s%s [%s] = %s\n", exp2, iden.c_str(), tmp, $6.result.c_str());
     $$.code = $3.code + $6.code + string(exp);
   }
 | Identifier '(' ExpressionList ')' ';' {
@@ -342,11 +349,14 @@ Expression
     this_env->check(!isArray($3.type), "invalid usage of array variable", "");
     string iden = $1.result;
     char exp[100];
-    char tmp[10];
-    sprintf(tmp, "t%d", tmp_var_cnt++);
-    sprintf(exp, "var %s\n%s = %s [%s]\n", tmp, tmp, iden.c_str(), $3.result.c_str());
+    char tmp1[10], tmp2[10];
+    sprintf(tmp1, "t%d", tmp_var_cnt++);
+    sprintf(tmp2, "t%d", tmp_var_cnt++);
+    char exp2[100];
+    sprintf(exp2, "var %s\n%s = 4 * %s\n", tmp1, tmp1, $3.result.c_str());
+    sprintf(exp, "%svar %s\n%s = %s [%s]\n", exp2, tmp2, tmp2, iden.c_str(), tmp1);
     $$.code = $1.code + $3.code + string(exp);
-    $$.result = string(tmp);
+    $$.result = string(tmp2);
     $$.type = deArray($1.type);
   }
 | Expression '+' Expression { TransBinaryOp($$, $1, $3, "+"); }
