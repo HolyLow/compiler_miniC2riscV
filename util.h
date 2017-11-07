@@ -16,7 +16,7 @@ using namespace std;
 //   string  name;
 // };
 
-typedef enum TokenType{ FUNC, INT, INT_ARRAY } TokenType;
+typedef enum TokenType{ FUNC, INT, INT_ARRAY, NOTSET } TokenType;
 typedef list<TokenType> ParamList;
 inline TokenType Array(TokenType t)
 {
@@ -24,10 +24,43 @@ inline TokenType Array(TokenType t)
     return INT_ARRAY;
   return t;
 }
+inline TokenType deArray(TokenType t)
+{
+  if (t == INT_ARRAY)
+    return INT;
+  return t;
+}
+inline bool isArray(TokenType t)
+{
+  return (t == INT_ARRAY);
+}
 
-struct FuncToken {
+inline string strType(TokenType t)
+{
+  switch (t) {
+    case FUNC:
+      return "FUNC";
+    case INT:
+      return "INT";
+    case INT_ARRAY:
+      return "INT_ARRAY";
+    case NOTSET:
+      return "NOT_SET";
+    default:
+      return "???";
+  }
+}
+
+class Token {
+public:
   string minic_name;
   string eeyore_name;
+  TokenType type;
+  Token() {}
+};
+
+class FuncToken : public Token {
+public:
   ParamList param_list;
   TokenType return_type;
   bool isDefined;
@@ -38,13 +71,12 @@ struct FuncToken {
     return_type = ty;
     isDefined = isDef;
     eeyore_name = string("f_") + minic_name;
+    type = FUNC;
   }
 };
 
-struct VarToken {
-  TokenType type;
-  string minic_name;
-  string eeyore_name;
+class VarToken : public Token {
+public:
   VarToken() {}
   VarToken(string name, TokenType ty, string ename) {
     minic_name = name;
@@ -93,6 +125,8 @@ public:
       error(msg);
     }
     vartoken[name] = VarToken(name, type, ename);
+    // printf("insert vartoken %s with type %s, inserted name is %s\n",
+    //         name.c_str(), strType(type).c_str(), vartoken[name].minic_name.c_str());
   }
 /* if a function is not found declared or defined, simply insert it with the isDef
  * tag to declare or define it;
@@ -113,40 +147,40 @@ public:
         it_func->second.isDefined = true;
       }
 
-      else {
-        char msg[100];
-        sprintf(msg, "duplicated definition of %s", name.c_str());
-        error(msg);
-      }
+      else
+        check(false, "duplicated definition of", name);
     }
   }
-  string searchToken(string name, bool isVar) {
+  Token* searchToken(string name, bool isVar) {
+    // printf("looking for token %s\n", name.c_str());
     if(isVar) {
       map<string, VarToken>::iterator it = vartoken.find(name);
       if(it == vartoken.end()) {
-        if(_parent == NULL) {
-          char msg[100];
-          sprintf(msg, "undefined variable %s", name.c_str());
-          error(msg);
-        }
-        else return _parent->searchToken(name, isVar);
+        check(_parent != NULL, "undefined variable", name);
+        return _parent->searchToken(name, isVar);
       }
-      else return it->second.eeyore_name;
+      else {
+        // printf("searched vartoken name is %s\n", it->first.c_str());
+        return (Token*) (&(it->second));
+      }
     }
     else {
       map<string, FuncToken>::iterator it = functoken.find(name);
       if(it == functoken.end()) {
-        if(_parent == NULL) {
-          char msg[100];
-          sprintf(msg, "undefined variable %s", name.c_str());
-          error(msg);
-        }
-        else return _parent->searchToken(name, isVar);
+        check(_parent != NULL, "undefined function", name);
+        return _parent->searchToken(name, isVar);
       }
-      else return it->second.eeyore_name;
+      else return (Token*) (&(it->second));
     }
   }
 
+  void check(bool flag, char* msg_prefix, string msg_tail) {
+    if(!flag) {
+      char msg[200];
+      sprintf(msg, "%s %s", msg_prefix, msg_tail.c_str());
+      error(msg);
+    }
+  }
 private:
   class Env* _parent;
   map<string, FuncToken> functoken;

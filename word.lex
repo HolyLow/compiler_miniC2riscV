@@ -27,7 +27,7 @@ while     { yylval.str = strdup(yytext); return WHILE; }
 if        { yylval.str = strdup(yytext); return IF; }
 else      { yylval.str = strdup(yytext); return ELSE; }
 {id}      { yylval.str = strdup(yytext); printf("get ID \"%s\"\n", yytext); return ID; }
-{num}     { yylval.str = strdup(yytext); return NUM; }
+{num}     { yylval.str = strdup(yytext); printf("get NUM \"%s\"\n", yytext); return NUM; }
 &&        { yylval.str = strdup(yytext); return AND; }
 "||"      { yylval.str = strdup(yytext); return OR; }
 ==        { yylval.str = strdup(yytext); return EQ; }

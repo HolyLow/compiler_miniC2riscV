@@ -11,9 +11,12 @@ typedef struct Part {
 
 
 typedef struct Expr {
-  string code;
-  string result;
+  string      code;
+  string      result;
+  TokenType   type;
+  Expr() { type = INT; }
 }Expr;
+typedef list<Expr> ExprList;
 
 typedef struct Func {
   string code;
@@ -27,10 +30,10 @@ typedef struct Iden {
   string code;
 }Iden;
 
-typedef struct ExprList {
-  string code;
-  list<string> result_list;
-}ExprList;
+// typedef struct ExprList {
+//   string code;
+//   list<string> result_list;
+// }ExprList;
 
 typedef struct Nodes {
   Expr        expr;
@@ -39,12 +42,12 @@ typedef struct Nodes {
   string      iden;
   Part        part;
   TokenType   type;
-  ParamList   param_list;
+  // ParamList   param_list;
   VarToken    var_info;
   VarList     var_list;
   ExprList    expr_list;
   char * str;
-  int    num;
+  // int    num;
 } Nodes;
 
 
