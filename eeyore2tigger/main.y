@@ -1,10 +1,24 @@
+%{
+#include "node.h"
+#include <stdio.h>
+
+
+int yylex();
+#define YYSTYPE Nodes
+int yyerror(char *msg)
+{
+  printf("Error encountered: %s \n", msg);
+}
+
+%}
+
 
 %token INTEGER VARIABLE LABEL FUNCTION
 %token VAR END IF GOTO PARAM CALL RETURN
 %token LOGICOP ARITHOP
 %%
 Goal
-: GoalPart
+: GoalPart { printf("goal recognized!\n"); }
 ;
 GoalPart
 : GoalPart VarDecl
@@ -23,7 +37,7 @@ FuncDecl
 ;
 FuncBody
 : FuncBody Expression
-| FuncBody Declaration
+| FuncBody VarDecl
 |
 ;
 RightValue
@@ -35,12 +49,13 @@ Expression
 | Variable '=' Op1 RightValue
 | Variable '=' RightValue
 | Variable '[' RightValue ']' '=' RightValue
-| Variable = Variable '[' RightValue ']'
+| Variable '=' Variable '[' RightValue ']'
 | IF RightValue LogicalOp RightValue GOTO Label
 | GOTO Label
 | Label ':'
 | PARAM RightValue
 | Variable '=' CALL Function
+| CALL Function 
 | RETURN RightValue
 ;
 Op2
@@ -50,7 +65,7 @@ Op2
 ;
 Op1
 : '!'
-: '-'
+| '-'
 ;
 LogicalOp
 : LOGICOP
@@ -66,3 +81,9 @@ Function
 ;
 
 %%
+
+int main()
+{
+  yyparse();
+  return 0;
+}

@@ -1,8 +1,8 @@
 %{
 #include "node.h"
-/*#define YYSTYPE Nodes*/
+#define YYSTYPE Nodes
 #include "main.tab.h"
-/*extern Nodes yylval;*/
+extern Nodes yylval;
 %}
 
 delim   [\ \t\n]
@@ -10,7 +10,7 @@ ws      {delim}+
 letter  [A-Za-z]
 digit   [0-9]
 num     ([1-9]+{digit}*)|0
-var     [Tt]{num}
+var     [Ttp]{num}
 label   l{num}
 func    f_{letter}+
 logicop "=="|">"|"<"
@@ -20,13 +20,20 @@ arithop  "&&"|"||"|"+"|"*"|"/"|"%"
 %%
 
 ws        ;
-{num}     { yylval.str = strdup(yytext); return INTEGER; }
-{var}     { yylval.str = strdup(yytext); return VARIABLE; }
-{label}   { yylval.str = strdup(yytext); return LABEL; }
-{func}    { yylval.str = strdup(yytext); return FUNCTION; }
-{logicop} { yylval.str = strdup(yytext); return LOGICOP; }
-{arithop} { yylval.str = strdup(yytext); return ARITHOP; }
-[\[\]\-\!\=\:]    { yylval.str = strdup(yytext); return yytext[0]; }
+{num}     { yylval.str = strdup(yytext); printf("get %s\n", yytext); return INTEGER; }
+{var}     { yylval.str = strdup(yytext); printf("get %s\n", yytext); return VARIABLE; }
+{label}   { yylval.str = strdup(yytext); printf("get %s\n", yytext); return LABEL; }
+{func}    { yylval.str = strdup(yytext); printf("get %s\n", yytext); return FUNCTION; }
+{logicop} { yylval.str = strdup(yytext); printf("get %s\n", yytext); return LOGICOP; }
+{arithop} { yylval.str = strdup(yytext); printf("get %s\n", yytext); return ARITHOP; }
+[\[\]\-\!\=\:]    { yylval.str = strdup(yytext); printf("get %s\n", yytext); return yytext[0]; }
+var       { return VAR; }
+end       { return END; }
+if        { return IF; }
+goto      { return GOTO; }
+param     { return PARAM; }
+call      { return CALL; }
+return    { return RETURN; }
 
 %%
 int yywrap()
