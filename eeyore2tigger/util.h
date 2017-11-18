@@ -13,10 +13,12 @@ typedef enum SentenceType {
   PARAM,
   RETURN,
   CALL,
+  CALL_ASSIGN,
   OP_1,
   OP_2,
   ASSIGN,
-  OP_ARRAY
+  LOAD,
+  STORE
 }SentenceType;
 
 typedef struct Sentence{

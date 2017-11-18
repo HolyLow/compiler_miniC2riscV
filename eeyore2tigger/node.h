@@ -4,5 +4,6 @@
 typedef struct Nodes {
   char * str;
   string part;
+  Sentence sent;
 } Nodes;
 #endif

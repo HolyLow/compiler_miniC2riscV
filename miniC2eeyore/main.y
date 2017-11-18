@@ -297,10 +297,10 @@ Statement
   }
 | VarDefn { $$.code = $1.code; }
 | RETURN Expression ';' {
-  char exp[100];
-  sprintf(exp, "return %s\n", $2.result.c_str());
-  $$.code = $2.code + string(exp);
-}
+    char exp[100];
+    sprintf(exp, "return %s\n", $2.result.c_str());
+    $$.code = $2.code + string(exp);
+  }
 ;
 StatementPack
 : StatementPack Statement { $$.code = $1.code + $2.code; }
@@ -308,14 +308,14 @@ StatementPack
 ;
 Expression
 : NUM { // $$.result = string($1); $$.code.clear(); $$.type = INT; }
-  char exp[100];
-  char tmp[10];
-  sprintf(tmp, "t%d", tmp_var_cnt++);
-  sprintf(exp, "var %s\n%s = %s\n", tmp, tmp, $1);
-  $$.code = string(exp);
-  $$.result = string(tmp);
-  $$.type = INT;
-}
+    char exp[100];
+    char tmp[10];
+    sprintf(tmp, "t%d", tmp_var_cnt++);
+    sprintf(exp, "var %s\n%s = %s\n", tmp, tmp, $1);
+    $$.code = string(exp);
+    $$.result = string(tmp);
+    $$.type = INT;
+  }
 | Identifier {
      Token* token = SearchToken($1, true);
     $$.result = token->eeyore_name;

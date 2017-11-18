@@ -18,6 +18,7 @@ int yyerror(char *msg)
 %token <str> LOGICOP ARITHOP '-' '!'
 
 %type <part> Function Label Variable LogicalOp Op1 Op2 RightValue
+%type <sent> Expression
 %%
 Goal
 : GoalPart { printf("goal recognized!\n"); }
@@ -43,22 +44,72 @@ FuncBody
 |
 ;
 RightValue
-: Variable
-| INTEGER
+: Variable { $$ = $1; }
+| INTEGER { $$ = $1; }
 ;
 Expression
-: Variable '=' RightValue Op2 RightValue
-| Variable '=' Op1 RightValue
-| Variable '=' RightValue
-| Variable '[' RightValue ']' '=' RightValue
-| Variable '=' Variable '[' RightValue ']'
-| IF RightValue LogicalOp RightValue WORD_GOTO Label
-| WORD_GOTO Label
-| Label ':'
-| WORD_PARAM RightValue
-| Variable '=' WORD_CALL Function
-| WORD_CALL Function
-| WORD_RETURN RightValue
+: Variable '=' RightValue Op2 RightValue {
+    $$.type = OP_2;
+    $$.var1 = $1;
+    $$.var2 = $3;
+    $$.op = $4;
+    $$.var3 = $5;
+  }
+| Variable '=' Op1 RightValue {
+    $$.type = OP_1;
+    $$.var1 = $1;
+    $$.op = $3;
+    $$.var2 = $4;
+  }
+| Variable '=' RightValue {
+    $$.type = ASSIGN;
+    $$.var1 = $1;
+    $$.var2 = $3;
+  }
+| Variable '[' RightValue ']' '=' RightValue {
+    $$.type = STORE;
+    $$.var1 = $1;
+    $$.var2 = $3;
+    $$.var3 = $6;
+  }
+| Variable '=' Variable '[' RightValue ']' {
+    $$.type = LOAD;
+    $$.var1 = $1;
+    $$.var2 = $3;
+    $$.var3 = $5;
+  }
+| IF RightValue LogicalOp RightValue WORD_GOTO Label {
+    $$.type = CON_JUMP;
+    $$.var1 = $2;
+    $$.op = $3;
+    $$.var2 = $4;
+    $$.var3 = $6;
+  }
+| WORD_GOTO Label {
+    $$.type = JUMP;
+    $$.var1 = $2;
+  }
+| Label ':' {
+    $$.type = LABEL;
+    $$.var1 = $1;
+  }
+| WORD_PARAM RightValue {
+    $$.type = PARAM;
+    $$.var1 = $2;
+  }
+| Variable '=' WORD_CALL Function {
+    $$.type = CALL_ASSIGN;
+    $$.var1 = $1;
+    $$.var2 = $4;
+  }
+| WORD_CALL Function {
+    $$.type = CALL;
+    $$.var1 = $2;
+  }
+| WORD_RETURN RightValue {
+    $$.type = RETURN;
+    $$.var1 = $2;
+  }
 ;
 Op2
 : LOGICOP { $$ = $1; }
