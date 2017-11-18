@@ -5,5 +5,9 @@ typedef struct Nodes {
   char * str;
   string part;
   Sentence sent;
+  Variable var;
+  SentList sentlist;
+  Function func;
+  int num;
 } Nodes;
 #endif

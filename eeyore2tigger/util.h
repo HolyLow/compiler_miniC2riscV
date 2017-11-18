@@ -6,6 +6,14 @@
 #include <vector>
 #include <string>
 using namespace std;
+
+typedef struct Variable{
+  string name;
+  bool isGlobal;
+  bool isArray;
+  int arrayLength;
+}Variable;
+
 typedef enum SentenceType {
   LABEL,
   JUMP,
@@ -27,21 +35,28 @@ typedef struct Sentence{
   SentenceType type;
 }Sentence;
 
-class Function{
-public:
-
-
-private:
-  list<Sentence> sentlist;
+typedef list<Sentence> SentList;
+typedef struct Function{
+  SentList sentlist;
   string name;
   int param_num;
   int stack_size;
-};
+  Function() { stack_size = 0; }
+}Function;
 
 class Env{
 public:
-
+  void addVar(Variable v) {
+    varvec.push_back(v);
+  }
+  void addFunc(Function f) {
+    funclist.push_back(f);
+  }
+  void analyze() {
+    
+  }
 private:
   list<Function> funclist;
+  vector<Variable> varvec;
 };
 #endif

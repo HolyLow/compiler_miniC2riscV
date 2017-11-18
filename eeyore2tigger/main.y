@@ -2,6 +2,7 @@
 #include "node.h"
 #include <stdio.h>
 
+Env env;
 
 int yylex();
 #define YYSTYPE Nodes
@@ -19,29 +20,58 @@ int yyerror(char *msg)
 
 %type <part> Function Label Variable LogicalOp Op1 Op2 RightValue
 %type <sent> Expression
+%type <var>  VarDecl
+%type <num>  VarLength
+%type <sentlist> FuncBody
+%type <func> FuncDecl
 %%
 Goal
-: GoalPart { printf("goal recognized!\n"); }
+: GoalPart { printf("goal recognized!\n"); env.analyze(); }
 ;
 GoalPart
-: GoalPart VarDecl
-| GoalPart FuncDecl
-|
+: GoalPart VarDecl {
+    $2.isGlobal = true;
+    env.addVar($2);
+  }
+| GoalPart FuncDecl {
+    env.addFunc($2);
+  }
+| {}
 ;
 VarDecl
-: VAR VarLength Variable
+: VAR VarLength Variable {
+    if($2 != -1) {
+      $$.isArray = true;
+      $$.arrayLength = $2;
+    }
+    else {
+      $$.isArray = false;
+    }
+    $$.name = $3;
+  }
 ;
 VarLength
-: INTEGER
-|
+: INTEGER { $$ = atoi($1); }
+| { $$ = -1; }
 ;
 FuncDecl
-: Function '[' INTEGER ']' FuncBody END Function
+: Function '[' INTEGER ']' FuncBody END Function {
+    $$.name = $1;
+    $$.param_num = atoi($3);
+    $$.sentlist = $5;
+  }
 ;
 FuncBody
-: FuncBody Expression
-| FuncBody VarDecl
-|
+: FuncBody Expression {
+    $$ = $1;
+    $$.push_back($2);
+  }
+| FuncBody VarDecl {
+    $$ = $1;
+    $2.isGlobal = false;
+    env.addVar($2);
+  }
+| { $$.clear(); }
 ;
 RightValue
 : Variable { $$ = $1; }
