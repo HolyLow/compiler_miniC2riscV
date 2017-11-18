@@ -22,7 +22,7 @@ arithop  "&&"|"||"|"+"|"*"|"/"|"%"
 ws        ;
 {num}     { yylval.str = strdup(yytext); printf("get %s\n", yytext); return INTEGER; }
 {var}     { yylval.str = strdup(yytext); printf("get %s\n", yytext); return VARIABLE; }
-{label}   { yylval.str = strdup(yytext); printf("get %s\n", yytext); return LABEL; }
+{label}   { yylval.str = strdup(yytext); printf("get %s\n", yytext); return WORD_LABEL; }
 {func}    { yylval.str = strdup(yytext); printf("get %s\n", yytext); return FUNCTION; }
 {logicop} { yylval.str = strdup(yytext); printf("get %s\n", yytext); return LOGICOP; }
 {arithop} { yylval.str = strdup(yytext); printf("get %s\n", yytext); return ARITHOP; }
@@ -30,10 +30,10 @@ ws        ;
 var       { return VAR; }
 end       { return END; }
 if        { return IF; }
-goto      { return GOTO; }
-param     { return PARAM; }
-call      { return CALL; }
-return    { return RETURN; }
+goto      { return WORD_GOTO; }
+param     { return WORD_PARAM; }
+call      { return WORD_CALL; }
+return    { return WORD_RETURN; }
 
 %%
 int yywrap()

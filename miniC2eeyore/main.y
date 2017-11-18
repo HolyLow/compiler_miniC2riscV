@@ -307,7 +307,15 @@ StatementPack
 | { $$.code.clear(); }
 ;
 Expression
-: NUM { $$.result = string($1); $$.code.clear(); $$.type = INT; }
+: NUM { // $$.result = string($1); $$.code.clear(); $$.type = INT; }
+  char exp[100];
+  char tmp[10];
+  sprintf(tmp, "t%d", tmp_var_cnt++);
+  sprintf(exp, "var %s\n%s = %s\n", tmp, tmp, $1);
+  $$.code = string(exp);
+  $$.result = string(tmp);
+  $$.type = INT;
+}
 | Identifier {
      Token* token = SearchToken($1, true);
     $$.result = token->eeyore_name;

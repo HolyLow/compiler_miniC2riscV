@@ -13,9 +13,11 @@ int yyerror(char *msg)
 %}
 
 
-%token INTEGER VARIABLE LABEL FUNCTION
-%token VAR END IF GOTO PARAM CALL RETURN
-%token LOGICOP ARITHOP
+%token <str> INTEGER VARIABLE WORD_LABEL FUNCTION
+%token VAR END IF WORD_GOTO WORD_PARAM WORD_CALL WORD_RETURN
+%token <str> LOGICOP ARITHOP '-' '!'
+
+%type <part> Function Label Variable LogicalOp Op1 Op2 RightValue
 %%
 Goal
 : GoalPart { printf("goal recognized!\n"); }
@@ -50,34 +52,34 @@ Expression
 | Variable '=' RightValue
 | Variable '[' RightValue ']' '=' RightValue
 | Variable '=' Variable '[' RightValue ']'
-| IF RightValue LogicalOp RightValue GOTO Label
-| GOTO Label
+| IF RightValue LogicalOp RightValue WORD_GOTO Label
+| WORD_GOTO Label
 | Label ':'
-| PARAM RightValue
-| Variable '=' CALL Function
-| CALL Function 
-| RETURN RightValue
+| WORD_PARAM RightValue
+| Variable '=' WORD_CALL Function
+| WORD_CALL Function
+| WORD_RETURN RightValue
 ;
 Op2
-: LOGICOP
-| ARITHOP
-| '-'
+: LOGICOP { $$ = $1; }
+| ARITHOP { $$ = $1; }
+| '-' { $$ = $1; }
 ;
 Op1
-: '!'
-| '-'
+: '!' { $$ = $1; }
+| '-' { $$ = $1; }
 ;
 LogicalOp
-: LOGICOP
+: LOGICOP { $$ = $1; }
 ;
 Variable
-: VARIABLE
+: VARIABLE { $$ = $1; }
 ;
 Label
-: LABEL
+: WORD_LABEL { $$ = $1; }
 ;
 Function
-: FUNCTION
+: FUNCTION { $$ = $1; }
 ;
 
 %%
