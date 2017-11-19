@@ -22,8 +22,8 @@ int yyerror(char *msg)
 %type <sent> Expression
 %type <var>  VarDecl
 %type <num>  VarLength
-%type <sentlist> FuncBody
-%type <func> FuncDecl
+/*%type <sentlist> FuncBody*/
+%type <func> FuncDecl FuncBody
 %%
 Goal
 : GoalPart { printf("goal recognized!\n"); env.analyze(); }
@@ -56,22 +56,23 @@ VarLength
 ;
 FuncDecl
 : Function '[' INTEGER ']' FuncBody END Function {
-    $$.name = $1;
-    $$.param_num = atoi($3);
-    $$.sentlist = $5;
+    $$ = $5;
+    $$.set_name($1);
+    $$.set_param_num(atoi($3));
   }
 ;
 FuncBody
 : FuncBody Expression {
     $$ = $1;
-    $$.push_back($2);
+    $$.addSentence($2);
   }
 | FuncBody VarDecl {
     $$ = $1;
     $2.isGlobal = false;
-    env.addVar($2);
+    /*env.addVar($2);*/
+    $$.addVar($2);
   }
-| { $$.clear(); }
+| {}
 ;
 RightValue
 : Variable { $$ = $1; }
