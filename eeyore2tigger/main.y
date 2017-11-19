@@ -26,7 +26,7 @@ int yyerror(char *msg)
 %type <func> FuncDecl FuncBody
 %%
 Goal
-: GoalPart { printf("goal recognized!\n"); env.analyze(); }
+: GoalPart { printf("goal recognized!\n"); env.analyze(); printf("analyze finished!\n"); }
 ;
 GoalPart
 : GoalPart VarDecl {
