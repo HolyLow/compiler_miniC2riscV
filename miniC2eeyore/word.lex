@@ -2,9 +2,7 @@
 #include "node.h"
 #define YYSTYPE Nodes
 #include "main.tab.h"
-/*#ifdef YYSTYPE
- #undef YYSTYPE
-#endif*/
+
 extern Nodes yylval;
 %}
 
@@ -34,7 +32,7 @@ else      { yylval.str = strdup(yytext); return ELSE; }
 !=        { yylval.str = strdup(yytext); return NE; }
 "<"       { yylval.str = strdup(yytext); return LT; }
 >         { yylval.str = strdup(yytext); return GT; }
-[\{\}\[\]\(\)\+\-\*\/\!\;\=\%]         { yylval.str = strdup(yytext); /*printf("get \"%s\"\n", yytext);*/ return yytext[0]; }
+[\{\}\[\]\(\)\+\-\*\/\!\;\=\%\,]         { yylval.str = strdup(yytext); /*printf("get \"%s\"\n", yytext);*/ return yytext[0]; }
 
 %%
 int yywrap()

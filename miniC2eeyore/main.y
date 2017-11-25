@@ -97,7 +97,7 @@ int yyerror(char *msg)
 /*%type <type> ParamDecl
 %type <param_list> ParamDeclPack*/
 %type <var_info> ParamDefn
-%type <var_list> ParamDefnPack
+%type <var_list> ParamDefnList ParamDefnAppend
 %type <expr_list> ExpressionList ExpressionAppend
 %type <part> Goal GlobalD VarDefn StatementPack
 
@@ -177,12 +177,24 @@ ParamDefn
 : Type Identifier { $$.type = $1; $$.minic_name = $2; }
 | Type Identifier '[' NUM ']' { $$.type = Array($1); $$.minic_name = $2; }
 ;
-ParamDefnPack
-: ParamDefnPack ParamDefn { $$ = $1; $$.insert($$.end(), $2); }
+ParamDefnList
+: ParamDefn ParamDefnAppend {
+    $$.clear();
+    $$.push_back($1);
+    $$.insert($$.end(), $2.begin(), $2.end());
+  }
+| { $$.clear(); }
+;
+ParamDefnAppend
+: ',' ParamDefn ParamDefnAppend {
+  $$.clear();
+  $$.push_back($2);
+  $$.insert($$.end(), $3.begin(), $3.end());
+  }
 | { $$.clear(); }
 ;
 FuncDefn
-: Type Identifier '(' ParamDefnPack ')'  { AddFuncToken($2, $4, $1, true); }
+: Type Identifier '(' ParamDefnList ')'  { AddFuncToken($2, $4, $1, true); }
   '{' {
     StartNewEnv();
     VarList::iterator it;
@@ -204,7 +216,7 @@ FuncDefn
   }
 ;
 FuncDecl
-: Type Identifier '(' ParamDefnPack ')' ';' { AddFuncToken($2, $4, $1, false); }
+: Type Identifier '(' ParamDefnList ')' ';' { AddFuncToken($2, $4, $1, false); }
 ;
 Type
 : WORD_INT { $$ = INT; }
