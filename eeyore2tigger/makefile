@@ -1,9 +1,9 @@
 CC = g++
 LEX = flex -v
 YACC = bison -d
-
+DEBUG = -g -rdynamic
 a.out: lex.yy.o main.tab.o util.o
-	$(CC) -o a.out lex.yy.o main.tab.o util.o
+	$(CC) $(DEBUG) -o a.out lex.yy.o main.tab.o util.o 
 
 lex.yy.o: lex.yy.c main.tab.h node.h
 

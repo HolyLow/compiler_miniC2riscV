@@ -18,7 +18,7 @@ typedef struct Variable{
   int arrayLength;
   int id;
   string memoryAddr;
-  string reg;
+  int reg;
   bool isOverflowed;
   bool isLoaded;
 

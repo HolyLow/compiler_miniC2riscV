@@ -76,6 +76,7 @@ Function::Function()  {
   memset(t_reg_flag, 0, sizeof(t_reg_flag));
 
   varmap.clear();
+  id2name.clear();
 }
 
 void Function::clear() {
@@ -86,6 +87,7 @@ void Function::clear() {
   memset(t_reg_flag, 0, sizeof(t_reg_flag));
 
   varmap.clear();
+  id2name.clear();
 }
 
 void Function::addVar(Variable v) {
@@ -95,6 +97,8 @@ void Function::addVar(Variable v) {
   }
   varmap[v.name] = v;
   id2name.push_back(v.name);
+  // printf("id2name id is %d, v id is %d\n", id2name.size(), v.id);
+  check(id2name[v.id] == v.name, "wrong id2name");
 }
 
 /* attention! no label checking, no num-or-variable checking */
@@ -214,7 +218,7 @@ void Function::livenessAnalyze() {
 }
 
 void Function::registerAllocate() {
-  SentList::iterator it_this;
+  SentList::iterator it_this, it_last, it_next;
   for(it_this = sentlist.begin(); it_this != sentlist.end(); it_this++) {
     while(it_this->varset.count() > reg_num) {
       int max_length = 0, max_i = 0;
@@ -228,6 +232,47 @@ void Function::registerAllocate() {
     }
   }
 
+  vector<bool> var_assigned;
+  vector<bool> reg_assigned;
+  var_assigned.resize(var_num);
+  for(int i = 0; i < var_num; ++i)
+    var_assigned[i] = false;
+  reg_assigned.resize(reg_num);
+  for(int i = 0; i < reg_num; ++i)
+    reg_assigned[i] = false;
+
+  for(it_this = sentlist.begin(); it_this != sentlist.end(); it_this++) {
+    it_next = it_this; it_next++;
+    if(it_next != sentlist.end()) {
+      for(int i = 0; i < var_num; ++i) {
+        /* end of DU-Chain, release related register */
+        if(it_this->varset[i] && !it_next->varset[i]) {
+          if(!var_assigned[i]) {
+            int reg_cnt = 0;
+            for(; reg_cnt < reg_num && reg_assigned[reg_cnt]; reg_cnt++);
+            check(reg_cnt < reg_num, "unchecked overflow");
+            varmap[id2name[i]].reg = reg_cnt;
+            reg_assigned[reg_cnt] = true;
+            var_assigned[i] = true;
+          }
+          check(var_assigned[i], "release before assign");
+          reg_assigned[varmap[id2name[i]].reg] = false;
+        }
+      }
+    }
+    /* assign for all live but not assigned variables */
+    int reg_cnt = 0;
+    for(int i = 0; i < var_num; ++i) {
+      if(it_this->varset[i] && !var_assigned[i]) {
+        while((reg_cnt<reg_num) && reg_assigned[reg_cnt])
+          reg_cnt++;
+        check(reg_cnt < reg_num, "unchecked overflow");
+        varmap[id2name[i]].reg = reg_cnt;
+        reg_assigned[reg_cnt] = true;
+        var_assigned[i] = true;
+      }
+    }
+  }
 }
 
 void Function::overflow(SentList::iterator it_this, int var_id) {

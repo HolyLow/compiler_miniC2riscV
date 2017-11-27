@@ -172,5 +172,6 @@ Function
 int main()
 {
   yyparse();
+  printf("\n"); // to fix a really strange bug... to prevent a SEGMENTATION FAULT
   return 0;
 }
