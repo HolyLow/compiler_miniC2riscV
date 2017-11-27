@@ -14,6 +14,7 @@ int yyerror(char *msg)
 %}
 
 
+
 %token <str> INTEGER VARIABLE WORD_LABEL FUNCTION
 %token VAR END IF WORD_GOTO WORD_PARAM WORD_CALL WORD_RETURN
 %token <str> LOGICOP ARITHOP '-' '!'

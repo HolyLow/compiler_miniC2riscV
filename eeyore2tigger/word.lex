@@ -12,7 +12,7 @@ digit   [0-9]
 num     ([1-9]+{digit}*)|0
 var     [Ttp]{num}
 label   l{num}
-func    f_{letter}+
+func    f_{letter}+[A-Za-z0-9_]*
 logicop "=="|">"|"<"
 /* attention! arithop doesn't include '-' */
 arithop  "&&"|"||"|"+"|"*"|"/"|"%"
