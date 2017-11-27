@@ -74,15 +74,27 @@ Function::Function()  {
   reg_num = 19;
   memset(s_reg_flag, 0, sizeof(s_reg_flag));
   memset(t_reg_flag, 0, sizeof(t_reg_flag));
+
+  varmap.clear();
 }
 
-void Function::addVar(variable v) {
+void Function::clear() {
+  stack_size = 0;
+  var_num = 0;
+  reg_num = 19;
+  memset(s_reg_flag, 0, sizeof(s_reg_flag));
+  memset(t_reg_flag, 0, sizeof(t_reg_flag));
+
+  varmap.clear();
+}
+
+void Function::addVar(Variable v) {
   v.id = var_num++;
   if(v.isArray && !v.isGlobal) {
     v.memoryAddr = stackAllocate(v.arrayLength/4);
   }
-  varmap.insert(make_pair(v.name, v));
-  id2name[v.id] = v.name;
+  varmap[v.name] = v;
+  id2name.push_back(v.name);
 }
 
 /* attention! no label checking, no num-or-variable checking */
@@ -90,7 +102,6 @@ void Function::livenessAnalyze() {
   SentList::reverse_iterator rit_this;
   for(rit_this = sentlist.rbegin(); rit_this != sentlist.rend(); rit_this++) {
     rit_this->varset.resize(var_num);
-    rit_this->reg_alloc.resize(var_num);
     if(rit_this->type == LABEL) {
       labelmap.insert(make_pair(rit_this->var1, rit_this));
     }
@@ -221,14 +232,14 @@ void Function::registerAllocate() {
 
 void Function::overflow(SentList::iterator it_this, int var_id) {
   SentList::iterator it_tmp = it_this;
-  while(it_tmp != sentlist.begin() && it->tmp->varset[var_id]) {
-    it_tmp->varset.unset(var_id);
+  while(it_tmp != sentlist.begin() && it_tmp->varset[var_id]) {
+    it_tmp->varset.reset(var_id);
     it_tmp--;
   }
-  it_tmp->varset.unset(var_id);
+  it_tmp->varset.reset(var_id);
   it_tmp = it_this; it_tmp++;
   while(it_tmp != sentlist.end() && it_tmp->varset[var_id]) {
-    it_tmp->varset.unset(var_id);
+    it_tmp->varset.reset(var_id);
     it_tmp++;
   }
   string name = id2name[var_id];

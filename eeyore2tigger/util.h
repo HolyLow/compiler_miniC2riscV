@@ -53,6 +53,7 @@ typedef list<Sentence> SentList;
 class Function {
 public:
   Function();
+  void clear();
   void set_name(string n) { name = n; }
   void set_param_num(int n) { param_num = n; }
   void set_sentlist(SentList s) { sentlist = s; }
@@ -78,7 +79,7 @@ private:
   void overflow(SentList::iterator it_this, int var_id);
   string stackAllocate(int size) {
     char str[20];
-    itoa(stack_size+1, str, 10);
+    sprintf(str, "%d", stack_size+1);
     stack_size += size;
     return (string)str;
   }

@@ -70,10 +70,12 @@ FuncBody
 | FuncBody VarDecl {
     $$ = $1;
     $2.isGlobal = false;
-    /*env.addVar($2);*/
     $$.addVar($2);
+    /*$2.isGlobal = false;
+    $1.addVar($2);
+    $$ = $1;*/
   }
-| {}
+| { $$.clear(); }
 ;
 RightValue
 : Variable { $$ = $1; }
