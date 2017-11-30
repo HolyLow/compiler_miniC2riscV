@@ -27,7 +27,7 @@ int yyerror(char *msg)
 %type <func> FuncDecl FuncBody
 %%
 Goal
-: GoalPart { printf("goal recognized!\n"); env.analyze(); printf("analyze finished!\n"); }
+: GoalPart { printf("goal recognized!\n");  env.analyze(); printf("analyze finished!\n"); }
 ;
 GoalPart
 : GoalPart VarDecl {
@@ -171,6 +171,7 @@ Function
 
 int main()
 {
+  printf("begin yyparse\n");
   yyparse();
   printf("\n"); // to fix a really strange bug... to prevent a SEGMENTATION FAULT
   return 0;

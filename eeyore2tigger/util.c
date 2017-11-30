@@ -19,64 +19,21 @@ case STORE:
 }
 */
 
-/*
-bool Sentence::use(string var) {
-  switch(type) {
-    case LABEL:
-    case CALL:
-    case CALL_ASSIGN:
-      return false;
-    case JUMP:
-    case CON_JUMP:
-    case PARAM:
-    case RETURN:
-    case ASSIGN:
-      return (var == var1);
-    case OP_1:
-      return (var == var2);
-    case OP_2:
-    case LOAD:
-      return (var == var2) || (var == var3);
-    case STORE:
-      return (var == var1) || (var == var2) || (var == var3);
-    default:
-      printf("undefined SentenceType\n");
-      exit(1);
-  }
-}
-
-bool Sentence::define(string var) {
-  switch(type) {
-    case LABEL:
-    case JUMP:
-    case CON_JUMP:
-    case PARAM:
-    case RETURN:
-    case CALL:
-    case STORE:
-      return false;
-    case CALL_ASSIGN:
-    case OP_1:
-    case OP_2:
-    case ASSIGN:
-    case LOAD:
-      return (var == var1);
-    default:
-      printf("undefined SentenceType\n");
-      exit(1);
-  }
-}
-*/
-
 Function::Function()  {
   stack_size = 0;
   var_num = 0;
   reg_num = 19;
   memset(s_reg_flag, 0, sizeof(s_reg_flag));
   memset(t_reg_flag, 0, sizeof(t_reg_flag));
+  memset(a_reg_flag, 0, sizeof(a_reg_flag));
 
   varmap.clear();
   id2name.clear();
+
+  for(int i = 0; i < 12; ++i)
+    s_reg_memoryAddr[i].clear();
+  for(int i = 0; i < 7; ++i)
+    t_reg_memoryAddr[i].clear();
 }
 
 void Function::clear() {
@@ -85,9 +42,15 @@ void Function::clear() {
   reg_num = 19;
   memset(s_reg_flag, 0, sizeof(s_reg_flag));
   memset(t_reg_flag, 0, sizeof(t_reg_flag));
+  memset(a_reg_flag, 0, sizeof(a_reg_flag));
 
   varmap.clear();
   id2name.clear();
+
+  for(int i = 0; i < 12; ++i)
+    s_reg_memoryAddr[i].clear();
+  for(int i = 0; i < 7; ++i)
+    t_reg_memoryAddr[i].clear();
 }
 
 void Function::addVar(Variable v) {
@@ -275,6 +238,209 @@ void Function::registerAllocate() {
   }
 }
 
+string Function::codeGenerate() {
+  string code;
+  string reg1, reg2, reg3;
+  string load1, load2, load3;
+  string store1, store2, store3;
+  SentList::iterator it_this;
+
+
+  string line; line.clear();
+
+  check(param_num <= 8, "too many parameters");
+  for(int i = 0; i < this->param_num; ++i) {
+    char param_name[10];
+    sprintf(param_name, "p%d", i);
+    varmap[(string)param_name].isLoaded = false;
+    varmap[(string)param_name].memoryAddr = stackAllocate(1);
+  }
+  string offset;
+  SentList::iterator it_param;
+  for(it_this = sentlist.begin(); it_this != sentlist.end(); it_this++) {
+    switch(it_this->type) {
+      case LABEL:
+        line = it_this->var1 + "\n";
+        code += line;
+        break;
+      case JUMP:
+        line = "goto " + it_this->var1 + "\n";
+        code += line;
+        break;
+      case CON_JUMP:
+        check(it_this->var2 == "0", "invalid con_jump");
+        loadVar(it_this->var1, load1, reg1);
+        line = "if " + reg1 + " " + it_this->op + " x0 goto " + it_this->var3;
+        line += '\n';
+        code += (load1 + line);
+        break;
+      case PARAM:
+        it_param = it_this;
+        for(int cnt = 0; it_param->type == PARAM; cnt++, it_param++) {
+          check(cnt < 8, "doesn't support more than 8 parameters\n");
+          loadVar(it_param->var1, load1, reg1);
+          line.clear();
+          char param_reg[10];
+          sprintf(param_reg, "a%d", cnt);
+          if(reg1 != (string)param_reg) {
+            line = (string)param_reg + " = " + reg1 + "\n";
+          }
+          a_reg_flag[cnt] = true;
+          code += load1 + line;
+        }
+        break;
+      case RETURN:
+        loadVar(it_this->var1, load1, reg1);
+        line.clear();
+        if(reg1 != "a0") {
+          line = "a0 = " + reg1 + "\n";
+        }
+        for(int i = 0; i < 12; ++i) {
+          char reg_name[10];
+          if(s_reg_flag[i]) {
+            if(s_reg_memoryAddr[i].length() == 0)
+              s_reg_memoryAddr[i] = stackAllocate(1);
+            sprintf(reg_name, "s%d", i);
+            line += "load " + s_reg_memoryAddr[i] + " " + (string)reg_name + "\n";
+          }
+        }
+        line += "return\n";
+        code += load1 + line;
+        break;
+      case CALL:
+        line.clear();
+        for(int i = 0; i < 7; ++i) {
+          char reg_name[10];
+          if(t_reg_flag[i]) {
+            if(t_reg_memoryAddr[i].length() == 0)
+              t_reg_memoryAddr[i] = stackAllocate(1);
+            sprintf(reg_name, "t%d", i);
+            line += "store " + (string)reg_name + " " + t_reg_memoryAddr[i] + "\n";
+          }
+        }
+        memset(a_reg_flag, 0, sizeof(a_reg_flag));
+        line += "call " + it_this->var1 + "\n";
+        for(int i = 0; i < 7; ++i) {
+          char reg_name[10];
+          if(t_reg_flag[i]) {
+            check(t_reg_memoryAddr[i].length() != 0, "unallocated t_reg");
+            sprintf(reg_name, "t%d", i);
+            line += "load " + t_reg_memoryAddr[i] + " " + (string)reg_name + "\n";
+          }
+        }
+        code += line;
+        break;
+      case CALL_ASSIGN:
+        line.clear();
+        for(int i = 0; i < 7; ++i) {
+          char reg_name[10];
+          if(t_reg_flag[i]) {
+            if(t_reg_memoryAddr[i].length() == 0)
+              t_reg_memoryAddr[i] = stackAllocate(1);
+            sprintf(reg_name, "t%d", i);
+            line += "store " + (string)reg_name + " " + t_reg_memoryAddr[i] + "\n";
+          }
+        }
+        memset(a_reg_flag, 0, sizeof(a_reg_flag));
+        storeVar(it_this->var1, store1, reg1);
+        line += "call " + it_this->var2 + "\n";
+        if(reg1 != "a0")
+          line += reg1 + " = " + "a0\n";
+        for(int i = 0; i < 7; ++i) {
+          char reg_name[10];
+          if(t_reg_flag[i]) {
+            check(t_reg_memoryAddr[i].length() != 0, "unallocated t_reg");
+            sprintf(reg_name, "t%d", i);
+            line += "load " + t_reg_memoryAddr[i] + " " + (string)reg_name + "\n";
+          }
+        }
+        code += line + store1;
+        break;
+      case OP_1:
+        loadVar(it_this->var2, load2, reg2);
+        storeVar(it_this->var1, store1, reg1);
+        line = reg1 + " = " + it_this->op + " " + reg2 + "\n";
+        code += load2 + line + store1;
+        break;
+      case OP_2:
+        loadVar(it_this->var2, load2, reg2);
+        if(it_this->var2 != it_this->var3) {
+          loadVar(it_this->var3, load3, reg3);
+          storeVar(it_this->var1, store1, reg1);
+          line = reg1 + " = " + reg2 + " " + it_this->op + " " + reg3 + "\n";
+          code += load2 + load3 + line + store1;
+        }
+        else {
+          storeVar(it_this->var1, store1, reg1);
+          line = reg1 + " = " + reg2 + " " + it_this->op + " " + reg2 + "\n";
+          code += load2 + line + store1;
+        }
+        break;
+      case ASSIGN:
+        if(isVar(it_this->var2)) {
+          loadVar(it_this->var2, load2, reg2);
+          storeVar(it_this->var1, store1, reg1);
+          line = reg1 + " = " + reg2 + "\n";
+          code += load2 + line + store1;
+        }
+        else {
+          storeVar(it_this->var1, store1, reg1);
+          line = reg1 + " = " + it_this->var2 + "\n";
+          code += line + store1;
+        }
+        break;
+      case LOAD:
+        loadVar(it_this->var2, load2, reg2);
+        loadVar(it_this->var3, load3, reg3);
+        storeVar(it_this->var1, store1, reg1);
+        offset = getTmpReg(2);
+        line = offset + " = " + reg3 + " + " + reg2 + "\n";
+        line += reg1 + " = " + offset + "[0]\n";
+        code += load2 + load3 + line + store1;
+        break;
+      case STORE:
+        loadVar(it_this->var1, load1, reg1);
+        loadVar(it_this->var2, load2, reg2);
+        loadVar(it_this->var3, load3, reg3);
+        offset = getTmpReg(2);
+        line = offset + " = " + reg1 + " + " + reg2 + "\n";
+        line += offset + "[0] = " + reg3 + "\n";
+        code += load1 + load2 + load3 + line;
+        break;
+      default:
+        check(false, "undefined sentence type");
+    }
+    /* in the front of the code, we have to push all used s_registers to stack,  */
+    /* and push all overflowed parameters into the stack */
+    /* and push all the parameters into the stack */
+
+    string prefix; prefix.clear();
+    char func_setting_str[20];
+    sprintf(func_setting_str, " [%d] [%d]\n", this->param_num, this->stack_size);
+    prefix = this->name + (string)func_setting_str;
+    for(int i = 0; i < 12; ++i) {
+      char reg_name[10];
+      if(s_reg_flag[i]) {
+        check(s_reg_memoryAddr[i].length() != 0, "unallocated s_reg");
+        sprintf(reg_name, "s%d", i);
+        prefix += "store " + (string)reg_name + " " + s_reg_memoryAddr[i] + "\n";
+      }
+    }
+    for(int i = 0; i < this->param_num; ++i) {
+      char reg_name[10];
+      sprintf(reg_name, "a%d", i);
+      char param_name[10];
+      sprintf(param_name, "p%d", i);
+      prefix += "store " + (string)reg_name + " " + varmap[(string)param_name].memoryAddr + "\n";
+    }
+
+    string suffix = "end " + this->name + "\n";
+
+    return prefix + code + suffix;
+    /* at the end of the code, we have to pop all used s_registers to stack */
+  }
+}
+
 void Function::overflow(SentList::iterator it_this, int var_id) {
   SentList::iterator it_tmp = it_this;
   while(it_tmp != sentlist.begin() && it_tmp->varset[var_id]) {
@@ -292,4 +458,65 @@ void Function::overflow(SentList::iterator it_this, int var_id) {
   if(!varmap[name].isGlobal && !varmap[name].isArray)
     varmap[name].memoryAddr = stackAllocate(1);
 
+}
+
+void Function::loadVar(string var_name, string& load_sent, string& reg_name) {
+  Variable var = varmap[var_name];
+  load_sent.clear();
+
+  int pid = idParameter(var_name);
+  if(var.isOverflowed) {
+    reg_name = getTmpReg();
+    if(var.isArray)
+      load_sent = "loadaddr " + var.memoryAddr + " " + reg_name + "\n";
+    else
+      load_sent = "load " + var.memoryAddr + " " + reg_name + "\n";
+    return;
+  }
+  else {
+    reg_name = getReg(var_name);
+    if(var.isLoaded || (!var.isGlobal && !var.isArray && pid == -1)) {
+      return;
+    }
+    else {
+      varmap[var_name].isLoaded = true;
+      if(var.isArray) { /* is Array, need to load addr */
+        load_sent = "loadaddr " + var.memoryAddr + " " + reg_name + "\n";
+      }
+      else {  /* not parameter variable */
+        load_sent = "load " + var.memoryAddr + " " + reg_name + "\n";
+      }
+      return;
+    }
+  }
+}
+
+void Function::storeVar(string var_name, string& store_sent, string& reg_name) {
+  Variable var = varmap[var_name];
+  check(!var.isArray, "invalid store for array");
+
+  store_sent.clear();
+  if(var.isOverflowed) {
+    reg_name = getTmpReg();
+    if(var.isGlobal) {
+      string array_reg = getTmpReg(2);
+      store_sent = "loadaddr " + var.memoryAddr + " " + array_reg + "\n";
+      store_sent += array_reg + "[0] = " + reg_name + "\n";
+      return;
+    }
+    else {
+      store_sent = "store " + reg_name + " " + var.memoryAddr + "\n";
+      return;
+    }
+  }
+  else {
+    reg_name = getReg(var_name);
+    varmap[var_name].isLoaded = true;
+    if(var.isGlobal) {
+      string array_reg = getTmpReg();
+      store_sent = "loadaddr " + var.memoryAddr + " " + array_reg + "\n";
+      store_sent += array_reg + "[0] = " + reg_name + "\n";
+    }
+    return;
+  }
 }

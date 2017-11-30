@@ -7,6 +7,7 @@ extern Nodes yylval;
 
 delim   [\ \t\n]
 ws      {delim}+
+comment (\/\/.*\n)
 letter  [A-Za-z]
 digit   [0-9]
 num     ([1-9]+{digit}*)|0
@@ -20,6 +21,7 @@ arithop  "&&"|"||"|"+"|"*"|"/"|"%"
 %%
 
 ws        ;
+{comment} ;
 {num}     { yylval.str = strdup(yytext); printf("get %s\n", yytext); return INTEGER; }
 {var}     { yylval.str = strdup(yytext); printf("get %s\n", yytext); return VARIABLE; }
 {label}   { yylval.str = strdup(yytext); printf("get %s\n", yytext); return WORD_LABEL; }
