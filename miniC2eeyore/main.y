@@ -274,9 +274,10 @@ Statement
     this_env->check(!isArray($6.type), "invalid assignment from array to non-array", "");
     string iden = token->eeyore_name;
     char exp[100];
-    char exp2[100], tmp[10];
+    char exp2[100], tmp[10], tmp0[10];
+    sprintf(tmp0, "t%d", tmp_var_cnt++);
     sprintf(tmp, "t%d", tmp_var_cnt++);
-    sprintf(exp2, "var %s\n%s = 4 * %s\n", tmp, tmp, $3.result.c_str());
+    sprintf(exp2, "var %s\n%s = 4\nvar %s\n%s = %s * %s\n", tmp0, tmp0, tmp, tmp, tmp0, $3.result.c_str());
     sprintf(exp, "%s%s [%s] = %s\n", exp2, iden.c_str(), tmp, $6.result.c_str());
     $$.code = $3.code + $6.code + string(exp);
   }
@@ -369,11 +370,12 @@ Expression
     this_env->check(!isArray($3.type), "invalid usage of array variable", "");
     string iden = $1.result;
     char exp[100];
-    char tmp1[10], tmp2[10];
+    char tmp1[10], tmp2[10], tmp0[10];
+    sprintf(tmp0, "t%d", tmp_var_cnt++);
     sprintf(tmp1, "t%d", tmp_var_cnt++);
     sprintf(tmp2, "t%d", tmp_var_cnt++);
     char exp2[100];
-    sprintf(exp2, "var %s\n%s = 4 * %s\n", tmp1, tmp1, $3.result.c_str());
+    sprintf(exp2, "var %s\n%s = 4\nvar %s\n%s = %s * %s\n", tmp0, tmp0, tmp1, tmp1, tmp0, $3.result.c_str());
     sprintf(exp, "%svar %s\n%s = %s [%s]\n", exp2, tmp2, tmp2, iden.c_str(), tmp1);
     $$.code = $1.code + $3.code + string(exp);
     $$.result = string(tmp2);

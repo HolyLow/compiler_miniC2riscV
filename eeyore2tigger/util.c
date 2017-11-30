@@ -27,6 +27,7 @@ Function::Function()  {
   memset(t_reg_flag, 0, sizeof(t_reg_flag));
   memset(a_reg_flag, 0, sizeof(a_reg_flag));
 
+  sentlist.clear();
   varmap.clear();
   id2name.clear();
 
@@ -44,6 +45,7 @@ void Function::clear() {
   memset(t_reg_flag, 0, sizeof(t_reg_flag));
   memset(a_reg_flag, 0, sizeof(a_reg_flag));
 
+  sentlist.clear();
   varmap.clear();
   id2name.clear();
 
@@ -66,7 +68,11 @@ void Function::addVar(Variable v) {
 
 /* attention! no label checking, no num-or-variable checking */
 void Function::livenessAnalyze() {
+  // printf("varmap size is %d, id2name size is %d, var_num is %d\n", varmap.size(), id2name.size(), var_num);
+  // printf("sentlist size is %d\n", sentlist.size());
   SentList::reverse_iterator rit_this;
+  map<string, SentList::reverse_iterator> labelmap;
+  // printf("var num is %d\n", var_num);
   for(rit_this = sentlist.rbegin(); rit_this != sentlist.rend(); rit_this++) {
     rit_this->varset.resize(var_num);
     if(rit_this->type == LABEL) {
@@ -78,9 +84,10 @@ void Function::livenessAnalyze() {
   last_varset.resize(var_num);
   boost::dynamic_bitset<> this_varset;
   this_varset.resize(var_num);
-  SentList::reverse_iterator rit_last, rit_jump;
+  SentList::reverse_iterator rit_last;
   do {
     bit_cnt = 0;
+    // int line_cnt = 0;
     for(rit_this = sentlist.rbegin(); rit_this != sentlist.rend(); rit_this++) {
       if(rit_this == sentlist.rbegin())
         last_varset.reset();
@@ -90,6 +97,9 @@ void Function::livenessAnalyze() {
       }
       this_varset = rit_this->varset;
       bit_begin = rit_this->varset.count();
+      // line_cnt++;
+      // printf("line_cnt = %d, begin line\n", line_cnt);
+      // rit_this->print_sentence();
       switch (rit_this->type) {
         case LABEL:
         case CALL:
@@ -125,7 +135,7 @@ void Function::livenessAnalyze() {
           this_varset.set(varmap[rit_this->var3].id);
           break;
         case ASSIGN:
-        // assume that only assin sentences and con_jump sentences will accur integer
+        // assume that only assign sentences and con_jump sentences will accur integer
           this_varset = last_varset;
           this_varset.reset(varmap[rit_this->var1].id);
           if(isVar(rit_this->var2))
@@ -134,16 +144,19 @@ void Function::livenessAnalyze() {
         case LOAD:
           this_varset = last_varset;
           this_varset.reset(varmap[rit_this->var1].id);
+          this_varset.set(varmap[rit_this->var2].id);
           this_varset.set(varmap[rit_this->var3].id);
           break;
         case STORE:
           this_varset = last_varset;
+          this_varset.set(varmap[rit_this->var1].id);
           this_varset.set(varmap[rit_this->var2].id);
           this_varset.set(varmap[rit_this->var3].id);
           break;
         default:
           check(false, "sentence type not defined");
       }
+      // printf("line_cnt = %d, end line\n\n", line_cnt);
       bit_end = this_varset.count();
       rit_this->varset = this_varset;
       check(bit_end >= bit_begin, "live variable num reduced after updating");
@@ -151,6 +164,7 @@ void Function::livenessAnalyze() {
     }
   }while(bit_cnt > 0);
 
+  // printf("fine, after dotted liveness\n");
   /* connect the dotted liveness lines for every variable */
   for(rit_this = sentlist.rbegin(); rit_this != sentlist.rend(); rit_this++) {
     rit_last = rit_this; rit_last++;
@@ -208,16 +222,26 @@ void Function::registerAllocate() {
     it_next = it_this; it_next++;
     if(it_next != sentlist.end()) {
       for(int i = 0; i < var_num; ++i) {
+        if(it_this->varset[i] && !it_next->varset[i] && !var_assigned[i]) {
+          int reg_cnt = 0;
+          for(; reg_cnt < reg_num && reg_assigned[reg_cnt]; reg_cnt++);
+          check(reg_cnt < reg_num, "unchecked overflow");
+          varmap[id2name[i]].reg = reg_cnt;
+          reg_assigned[reg_cnt] = true;
+          var_assigned[i] = true;
+        }
+      }
+      for(int i = 0; i < var_num; ++i) {
         /* end of DU-Chain, release related register */
         if(it_this->varset[i] && !it_next->varset[i]) {
-          if(!var_assigned[i]) {
-            int reg_cnt = 0;
-            for(; reg_cnt < reg_num && reg_assigned[reg_cnt]; reg_cnt++);
-            check(reg_cnt < reg_num, "unchecked overflow");
-            varmap[id2name[i]].reg = reg_cnt;
-            reg_assigned[reg_cnt] = true;
-            var_assigned[i] = true;
-          }
+          // if(!var_assigned[i]) {
+          //   int reg_cnt = 0;
+          //   for(; reg_cnt < reg_num && reg_assigned[reg_cnt]; reg_cnt++);
+          //   check(reg_cnt < reg_num, "unchecked overflow");
+          //   varmap[id2name[i]].reg = reg_cnt;
+          //   reg_assigned[reg_cnt] = true;
+          //   var_assigned[i] = true;
+          // }
           check(var_assigned[i], "release before assign");
           reg_assigned[varmap[id2name[i]].reg] = false;
         }
@@ -244,23 +268,15 @@ string Function::codeGenerate() {
   string load1, load2, load3;
   string store1, store2, store3;
   SentList::iterator it_this;
-
-
   string line; line.clear();
-
   check(param_num <= 8, "too many parameters");
-  for(int i = 0; i < this->param_num; ++i) {
-    char param_name[10];
-    sprintf(param_name, "p%d", i);
-    varmap[(string)param_name].isLoaded = false;
-    varmap[(string)param_name].memoryAddr = stackAllocate(1);
-  }
+
   string offset;
   SentList::iterator it_param;
   for(it_this = sentlist.begin(); it_this != sentlist.end(); it_this++) {
     switch(it_this->type) {
       case LABEL:
-        line = it_this->var1 + "\n";
+        line = it_this->var1 + ":\n";
         code += line;
         break;
       case JUMP:
@@ -380,7 +396,9 @@ string Function::codeGenerate() {
         if(isVar(it_this->var2)) {
           loadVar(it_this->var2, load2, reg2);
           storeVar(it_this->var1, store1, reg1);
-          line = reg1 + " = " + reg2 + "\n";
+          line.clear();
+          if(reg1 != reg2)
+            line += reg1 + " = " + reg2 + "\n";
           code += load2 + line + store1;
         }
         else {
@@ -410,35 +428,36 @@ string Function::codeGenerate() {
       default:
         check(false, "undefined sentence type");
     }
-    /* in the front of the code, we have to push all used s_registers to stack,  */
-    /* and push all overflowed parameters into the stack */
-    /* and push all the parameters into the stack */
-
-    string prefix; prefix.clear();
-    char func_setting_str[20];
-    sprintf(func_setting_str, " [%d] [%d]\n", this->param_num, this->stack_size);
-    prefix = this->name + (string)func_setting_str;
-    for(int i = 0; i < 12; ++i) {
-      char reg_name[10];
-      if(s_reg_flag[i]) {
-        check(s_reg_memoryAddr[i].length() != 0, "unallocated s_reg");
-        sprintf(reg_name, "s%d", i);
-        prefix += "store " + (string)reg_name + " " + s_reg_memoryAddr[i] + "\n";
-      }
-    }
-    for(int i = 0; i < this->param_num; ++i) {
-      char reg_name[10];
-      sprintf(reg_name, "a%d", i);
-      char param_name[10];
-      sprintf(param_name, "p%d", i);
-      prefix += "store " + (string)reg_name + " " + varmap[(string)param_name].memoryAddr + "\n";
-    }
-
-    string suffix = "end " + this->name + "\n";
-
-    return prefix + code + suffix;
-    /* at the end of the code, we have to pop all used s_registers to stack */
   }
+  /* in the front of the code, we have to push all used s_registers to stack,  */
+  /* and push all overflowed parameters into the stack */
+  /* and push all the parameters into the stack */
+
+  // printf("body code is:\n%s\n", code.c_str());
+  string prefix; prefix.clear();
+  char func_setting_str[20];
+  sprintf(func_setting_str, " [%d] [%d]\n", this->param_num, this->stack_size);
+  prefix = this->name + (string)func_setting_str;
+  for(int i = 0; i < 12; ++i) {
+    char reg_name[10];
+    if(s_reg_flag[i]) {
+      check(s_reg_memoryAddr[i].length() != 0, "unallocated s_reg");
+      sprintf(reg_name, "s%d", i);
+      prefix += "store " + (string)reg_name + " " + s_reg_memoryAddr[i] + "\n";
+    }
+  }
+  for(int i = 0; i < this->param_num; ++i) {
+    char reg_name[10];
+    sprintf(reg_name, "a%d", i);
+    char param_name[10];
+    sprintf(param_name, "p%d", i);
+    prefix += "store " + (string)reg_name + " " + varmap[(string)param_name].memoryAddr + "\n";
+  }
+
+  string suffix = "end " + this->name + "\n";
+
+  return prefix + code + suffix;
+  /* at the end of the code, we have to pop all used s_registers to stack */
 }
 
 void Function::overflow(SentList::iterator it_this, int var_id) {
