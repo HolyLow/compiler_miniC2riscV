@@ -23,13 +23,12 @@ int yyerror(char *msg)
 %type <sent> Expression
 %type <var>  VarDecl
 %type <num>  VarLength
-/*%type <sentlist> FuncBody*/
 %type <func> FuncDecl FuncBody
 %%
 Goal
 : GoalPart {
     /*printf("goal recognized!\n");*/
-    /*printf("trail 5\n");*/
+    /*printf("trail 7\n");*/
     env.analyze();
     /*printf("analyze finished!\n"); */
   }

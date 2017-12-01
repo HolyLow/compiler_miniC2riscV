@@ -19,6 +19,48 @@ case STORE:
 }
 */
 
+void Sentence::print_sentence() {
+  string sentence; sentence.clear();
+  switch (type) {
+    case LABEL:
+    sentence = "type LABAL ::: " + var1 + " :";
+    break;
+    case JUMP:
+    sentence = "type JUMP ::: goto " + var1;
+    break;
+    case CON_JUMP:
+    sentence = "type CON_JUMP ::: if "+var1+op+var2+" goto "+var3;
+    break;
+    case PARAM:
+    sentence = "type PARAM ::: param "+var1;
+    break;
+    case RETURN:
+    sentence = "type RETURN ::: return "+var1;
+    break;
+    case CALL:
+    sentence = "type CALL ::: call "+var1;
+    break;
+    case CALL_ASSIGN:
+    sentence = "type CALL_ASSIGN ::: "+var1+" = call "+var2;
+    break;
+    case OP_1:
+    sentence = "type OP_1 ::: "+var1+" = "+op+var2;
+    break;
+    case OP_2:
+    sentence = "type OP_2 ::: "+var1+" = "+var2+op+var3;
+    break;
+    case ASSIGN:
+    sentence = "type ASSIGN ::: "+var1+" = "+var2;
+    break;
+    case LOAD:
+    sentence = "type LOAD ::: "+var1+" = "+var2+"["+var3+"]";
+    break;
+    case STORE:
+    sentence = "type STORE ::: "+var1+"["+var2+"] = "+var3;
+    break;
+  }
+  printf("%s\n", sentence.c_str());
+}
 Function::Function()  {
   stack_size = 0;
   var_num = 0;
@@ -53,6 +95,20 @@ void Function::clear() {
     s_reg_memoryAddr[i].clear();
   for(int i = 0; i < 7; ++i)
     t_reg_memoryAddr[i].clear();
+}
+
+void Function::set_param_num(int n) {
+  param_num = n;
+  char param_name[10];
+  for(int i = 0; i < n; ++i) {
+    sprintf(param_name, "p%d", i);
+    Variable var;
+    var.name = (string)param_name;
+    var.isGlobal = false;
+    var.isArray = false;
+    var.memoryAddr = stackAllocate(1);
+    addVar(var);
+  }
 }
 
 void Function::addVar(Variable v) {
@@ -231,32 +287,24 @@ void Function::registerAllocate() {
           var_assigned[i] = true;
         }
       }
+      /* assign for all live but not assigned variables */
+      int reg_cnt = 0;
+      for(int i = 0; i < var_num; ++i) {
+        if(it_this->varset[i] && !var_assigned[i]) {
+          while((reg_cnt<reg_num) && reg_assigned[reg_cnt])
+          reg_cnt++;
+          check(reg_cnt < reg_num, "unchecked overflow");
+          varmap[id2name[i]].reg = reg_cnt;
+          reg_assigned[reg_cnt] = true;
+          var_assigned[i] = true;
+        }
+      }
       for(int i = 0; i < var_num; ++i) {
         /* end of DU-Chain, release related register */
         if(it_this->varset[i] && !it_next->varset[i]) {
-          // if(!var_assigned[i]) {
-          //   int reg_cnt = 0;
-          //   for(; reg_cnt < reg_num && reg_assigned[reg_cnt]; reg_cnt++);
-          //   check(reg_cnt < reg_num, "unchecked overflow");
-          //   varmap[id2name[i]].reg = reg_cnt;
-          //   reg_assigned[reg_cnt] = true;
-          //   var_assigned[i] = true;
-          // }
           check(var_assigned[i], "release before assign");
           reg_assigned[varmap[id2name[i]].reg] = false;
         }
-      }
-    }
-    /* assign for all live but not assigned variables */
-    int reg_cnt = 0;
-    for(int i = 0; i < var_num; ++i) {
-      if(it_this->varset[i] && !var_assigned[i]) {
-        while((reg_cnt<reg_num) && reg_assigned[reg_cnt])
-          reg_cnt++;
-        check(reg_cnt < reg_num, "unchecked overflow");
-        varmap[id2name[i]].reg = reg_cnt;
-        reg_assigned[reg_cnt] = true;
-        var_assigned[i] = true;
       }
     }
   }
@@ -479,6 +527,13 @@ void Function::overflow(SentList::iterator it_this, int var_id) {
 
 }
 
+string Function::stackAllocate(int size) {
+  char str[20];
+  sprintf(str, "%d", stack_size);
+  stack_size += size;
+  return (string)str;
+}
+
 void Function::loadVar(string var_name, string& load_sent, string& reg_name) {
   Variable var = varmap[var_name];
   load_sent.clear();
@@ -538,4 +593,62 @@ void Function::storeVar(string var_name, string& store_sent, string& reg_name) {
     }
     return;
   }
+}
+
+string Function::getTmpReg(int n) {
+  for(int i = 0; i < 8; ++i) {
+    if(!a_reg_flag[i]) {
+      n--;
+      if(n <= 0) {
+        char str[10];
+        sprintf(str, "a%d", i);
+        return (string)str;
+      }
+    }
+  }
+  check(n <= 0, "get tmp reg failed");
+}
+
+string Function::getReg(string name) {
+  int reg = varmap[name].reg;
+  check(reg >= 0 && reg < reg_num, "invalid reg num");
+  char regname[20];
+  if(reg < 12) {
+    sprintf(regname, "s%d", reg);
+    s_reg_flag[reg] = true;
+  }
+  else {
+    sprintf(regname, "t%d", reg-12);
+    t_reg_flag[reg-12] = true;
+  }
+  return (string)regname;
+}
+
+void Env::analyze() {
+  list<Function>::iterator it_func;
+  string code; code.clear();
+  int size = varvec.size();
+  for(int i = 0; i < size; ++i) {
+    char global_var_name[10];
+    sprintf(global_var_name, "v%d", i);
+    varvec[i].memoryAddr = (string)global_var_name;
+    if(varvec[i].isArray) {
+      char array_length[10];
+      sprintf(array_length, "%d", varvec[i].arrayLength);
+      code += (string)global_var_name + " = malloc " + (string)array_length + "\n";
+    }
+    else {
+      code += (string)global_var_name + " = 0\n";
+    }
+  }
+  for(it_func = funclist.begin(); it_func != funclist.end(); it_func++) {
+    for(int i = 0; i < size; ++i) {
+      it_func->addVar(varvec[i]);   // insert the global variables into the functions
+    }
+    it_func->livenessAnalyze();
+    it_func->registerAllocate();
+    code += it_func->codeGenerate();
+  }
+
+  printf("%s\n", code.c_str());
 }
