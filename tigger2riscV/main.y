@@ -1,6 +1,8 @@
 %{
 #include "node.h"
+#include "util.h"
 #include <stdio.h>
+#include <stdlib.h>
 
 /*Env env;*/
 
@@ -11,6 +13,10 @@ int yyerror(char *msg)
   printf("Error encountered: %s \n", msg);
 }
 
+
+string code;
+
+
 %}
 
 %token <str> VARIABLE INTEGER FUNCTION REG WORD_LABEL
@@ -19,10 +25,15 @@ int yyerror(char *msg)
 
 /*%type Goal GoalPart GlobalVarDecl FunctionDecl ExpressionList Expression Reg Label Function
 %type Op1 Op2 LogicalOp*/
+%type <str> Function
+
 %%
 
 Goal
-: GoalPart { printf("tigger2riscV goal recognized!\n"); }
+: GoalPart {
+    printf("tigger2riscV goal recognized!\n");
+    printf("generated code is:\n%s", code.c_str());
+  }
 ;
 GoalPart
 : GoalPart FunctionDecl
@@ -30,11 +41,45 @@ GoalPart
 |
 ;
 GlobalVarDecl
-: VARIABLE '=' INTEGER
-| VARIABLE '=' WORD_MALLOC INTEGER
+: VARIABLE '=' INTEGER {
+    code += "\
+            \t.global  global_var\n\
+            \t.section .sdata\n\
+            \t.align   2\n\
+            \t.type    " + (string)$1 + ", @object\n\
+            \t.size    " + (string)$1 + ", 4\n\
+            " + (string)$1 + ":\n\
+            \t.word    " + (string)$1 + "\n\n";
+  }
+| VARIABLE '=' WORD_MALLOC INTEGER {
+    char addr[100];
+    sprintf(addr, "%d", atoi($4) * 4);
+    code += "\
+            \t.comm     " + (string)$1 + ", " + (string)addr + ",4\n\n";
+  }
 ;
 FunctionDecl
-: Function '[' INTEGER ']' '[' INTEGER ']' ExpressionList WORD_END Function
+: Function '[' INTEGER ']' '[' INTEGER ']' {
+    char* func = &($1[2]);
+    int nstk = (atoi($6) / 4 + 1) * 16;
+    char stk[100];
+    sprintf(stk, "%d", nstk);
+    char offset_stk[100];
+    sprintf(offset_stk, "%d", nstk - 4);
+    code += "\
+            \t.text\n\
+            \t.align    2\n\
+            \t.global   " + (string)func + "\n\
+            \t.type     @" + (string)func + "\n\
+            " + (string)func + ":\n\
+            \tadd       sp, sp, -" + (string)stk + "\n\
+            \tsw        ra, " + offset_stk + "(sp)\n";
+  }
+  ExpressionList WORD_END Function {
+    char* func = &($11[2]);
+    code += "\
+            \t.size     " + (string)$3 + ", .-" + (string)func + "\n\n";
+  }
 ;
 ExpressionList
 : ExpressionList Expression
@@ -66,7 +111,7 @@ Label
 : WORD_LABEL
 ;
 Function
-: FUNCTION
+: FUNCTION { $$ = $1; }
 ;
 Op2
 : LOGICOP
@@ -85,6 +130,7 @@ LogicalOp
 
 int main()
 {
+  code.clear();
   yyparse();
   printf("\n"); // to fix a really strange bug... to prevent a SEGMENTATION FAULT
   return 0;
