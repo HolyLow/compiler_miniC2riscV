@@ -3,6 +3,7 @@
 #include "util.h"
 typedef struct Nodes {
   char * str;
+  Operation op;
   // string part;
   // Sentence sent;
   // Variable var;
