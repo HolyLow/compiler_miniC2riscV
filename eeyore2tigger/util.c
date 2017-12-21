@@ -239,14 +239,41 @@ void Function::livenessAnalyze() {
     }
   }
 
-  /* count the liveness length for each variable */
-  /* under the assumption of "one line for each variable" */
-  var_live_length.resize(var_num);
+  SentList::iterator it_this, it_next, it_next_after;
+  int line_cnt = 0;
+  var_last_live.resize(var_num);
   for(int i = 0; i < var_num; ++i)
-    var_live_length[i] = 0;
-  for(rit_this = sentlist.rbegin(); rit_this != sentlist.rend(); rit_this++) {
-    for(int i = 0; i < var_num; ++i)
-      var_live_length[i] += (rit_this->varset[i]) ? 1 : 0;
+    var_last_live[i] = 10000000;
+  for(it_this = sentlist.begin(); it_this != sentlist.end(); it_this++, line_cnt++) {
+    it_next = it_this; it_next++;
+    if(it_next == sentlist.end())
+      break;
+    it_next_after = it_next; it_next_after++;
+    for(int i = 0; i < var_num; ++i) {
+      // // to eliminate the double assign, such as making "t0 = 1; T0 = t0" to become "T0 = 1"
+      // if(!it_this->varset[i] && it_next->varset[i]) {
+      //   if(it_next_after == sentlist.end() || !it_next_after->varset[i]) {
+      //     if(it_this->type == ASSIGN && it_next->type == ASSIGN) {
+      //       check(it_this->var1 == it_next->var2, "invalid assign deletion");
+      //       it_this->var1 = it_next->var1;
+      //       // it_this->varset = it_this->varset & it_next->varset;
+      //       it_next = sentlist.erase(it_next);
+      //       break;
+      //     }
+      //   }
+      // }
+
+      // use the die-place of the variables to help decide which to be overflowed
+      if(it_this->varset[i] && !it_next->varset[i]) {
+        var_last_live[i] = line_cnt;
+      }
+    }
+    // check if this sentense defines a variable which is never used, if it is, eliminate it
+    if((it_this->type == ASSIGN || it_this->type == OP_1 || it_this->type == OP_2)
+       && it_next != sentlist.end() && !it_next->varset[varmap[it_this->var1].id]) {
+        it_this = sentlist.erase(it_this);
+        it_this--;
+    }
   }
 }
 
@@ -254,10 +281,10 @@ void Function::registerAllocate() {
   SentList::iterator it_this, it_last, it_next;
   for(it_this = sentlist.begin(); it_this != sentlist.end(); it_this++) {
     while(it_this->varset.count() > reg_num) {
-      int max_length = 0, max_i = 0;
+      int max_live = 0, max_i = 0;
       for(int i = 0; i < var_num; ++i) {
-        if(it_this->varset[i] && max_length < var_live_length[i]) {
-          max_length = var_live_length[i];
+        if(it_this->varset[i] && max_live < var_last_live[i]) {
+          max_live = var_last_live[i];
           max_i = i;
         }
       }
@@ -292,21 +319,25 @@ void Function::registerAllocate() {
       for(int i = 0; i < var_num; ++i) {
         if(it_this->varset[i] && !var_assigned[i]) {
           while((reg_cnt<reg_num) && reg_assigned[reg_cnt])
-          reg_cnt++;
+            reg_cnt++;
           check(reg_cnt < reg_num, "unchecked overflow");
           varmap[id2name[i]].reg = reg_cnt;
           reg_assigned[reg_cnt] = true;
           var_assigned[i] = true;
         }
       }
+      /* end of DU-Chain, release related register */
       for(int i = 0; i < var_num; ++i) {
-        /* end of DU-Chain, release related register */
         if(it_this->varset[i] && !it_next->varset[i]) {
           check(var_assigned[i], "release before assign");
           reg_assigned[varmap[id2name[i]].reg] = false;
         }
       }
     }
+  }
+  for(int i = 0; i < var_num; ++i) {
+    if(!var_assigned[i])
+      varmap[id2name[i]].reg = -1;
   }
 }
 
@@ -611,6 +642,9 @@ string Function::getTmpReg(int n) {
 
 string Function::getReg(string name) {
   int reg = varmap[name].reg;
+  if(reg == -1) // this variable is not assigned, actually is a dead variable,
+                // but as we don't do dead-code-elimination, we have to take it...
+    return getTmpReg();
   check(reg >= 0 && reg < reg_num, "invalid reg num");
   char regname[20];
   if(reg < 12) {

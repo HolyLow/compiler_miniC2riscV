@@ -24,6 +24,7 @@ typedef struct Variable{
   Variable() {
     isOverflowed = false;
     isLoaded = false;
+    reg = -1;
   }
 
 }Variable;
@@ -72,7 +73,7 @@ private:
   int stack_size;
   int var_num;
   int reg_num;
-  vector<int> var_live_length;
+  vector<int> var_last_live;
   bool s_reg_flag[12];
   bool t_reg_flag[7];
   bool a_reg_flag[8];
