@@ -4,6 +4,7 @@
 typedef struct Nodes {
   char * str;
   Operation op;
+  string _string;
   // string part;
   // Sentence sent;
   // Variable var;
