@@ -27,23 +27,23 @@ arithop  "&&"|"||"|"+"|"*"|"/"|"%"
 
 ws        ;
 {comment} ;
-{num}     { yylval.str = strdup(yytext); printf("get %s\n", yytext); return INTEGER; }
-{var}     { yylval.str = strdup(yytext); printf("get %s\n", yytext); return VARIABLE; }
-{label}   { yylval.str = strdup(yytext); printf("get %s\n", yytext); return WORD_LABEL; }
-{reg}     { yylval.str = strdup(yytext); printf("get %s\n", yytext); return REG; }
-{func}    { yylval.str = strdup(yytext); printf("get %s\n", yytext); return FUNCTION; }
-{logicop} { yylval.str = strdup(yytext); printf("get %s\n", yytext); return LOGICOP; }
-{arithop} { yylval.str = strdup(yytext); printf("get %s\n", yytext); return ARITHOP; }
-[\[\]\-\!\=\:]    { yylval.str = strdup(yytext); printf("get %s\n", yytext); return yytext[0]; }
-malloc    { printf("get %s\n", yytext);return WORD_MALLOC; }
-end       { printf("get %s\n", yytext);return WORD_END; }
-if        { printf("get %s\n", yytext);return WORD_IF; }
-goto      { printf("get %s\n", yytext);return WORD_GOTO; }
-call      { printf("get %s\n", yytext);return WORD_CALL; }
-store     { printf("get %s\n", yytext);return WORD_STORE; }
-load      { printf("get %s\n", yytext);return WORD_LOAD; }
-loadaddr  { printf("get %s\n", yytext);return WORD_LOADADDR; }
-return    { printf("get %s\n", yytext);return WORD_RETURN; }
+{num}     { yylval.str = strdup(yytext); /*printf("get %s\n", yytext);*/ return INTEGER; }
+{var}     { yylval.str = strdup(yytext); /*printf("get %s\n", yytext);*/ return VARIABLE; }
+{label}   { yylval.str = strdup(yytext); /*printf("get %s\n", yytext);*/ return WORD_LABEL; }
+{reg}     { yylval.str = strdup(yytext); /*printf("get %s\n", yytext);*/ return REG; }
+{func}    { yylval.str = strdup(yytext); /*printf("get %s\n", yytext);*/ return FUNCTION; }
+{logicop} { yylval.str = strdup(yytext); /*printf("get %s\n", yytext);*/ return LOGICOP; }
+{arithop} { yylval.str = strdup(yytext); /*printf("get %s\n", yytext);*/ return ARITHOP; }
+[\[\]\-\!\=\:]    { yylval.str = strdup(yytext); /*printf("get %s\n", yytext);*/ return yytext[0]; }
+malloc    { /*printf("get %s\n", yytext);*/return WORD_MALLOC; }
+end       { /*printf("get %s\n", yytext);*/return WORD_END; }
+if        { /*printf("get %s\n", yytext);*/return WORD_IF; }
+goto      { /*printf("get %s\n", yytext);*/return WORD_GOTO; }
+call      { /*printf("get %s\n", yytext);*/return WORD_CALL; }
+store     { /*printf("get %s\n", yytext);*/return WORD_STORE; }
+load      { /*printf("get %s\n", yytext);*/return WORD_LOAD; }
+loadaddr  { /*printf("get %s\n", yytext);*/return WORD_LOADADDR; }
+return    { /*printf("get %s\n", yytext);*/return WORD_RETURN; }
 
 %%
 int yywrap()

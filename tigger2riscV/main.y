@@ -36,8 +36,9 @@ int stack;
 
 Goal
 : GoalPart {
-    printf("tigger2riscV goal recognized!\n");
-    printf("generated code is:\n%s", code.c_str());
+    // printf("tigger2riscV goal recognized!\n");
+    //printf("generated code is:\n%s", code.c_str());
+    printf("\n%s", code.c_str());
   }
 ;
 GoalPart
@@ -54,7 +55,7 @@ GlobalVarDecl
             \t.type    " + (string)$1 + ", @object\n\
             \t.size    " + (string)$1 + ", 4\n\
             " + (string)$1 + ":\n\
-            \t.word    " + (string)$1 + "\n\n";
+            \t.word    " + (string)$3 + "\n\n";
   }
 | VARIABLE '=' WORD_MALLOC INTEGER {
     char addr[100];
@@ -65,7 +66,6 @@ GlobalVarDecl
 ;
 FunctionDecl
 : Function '[' INTEGER ']' '[' INTEGER ']' {
-    char* func = &($1[2]);
     int nstk = (atoi($6) / 4 + 1) * 16;
     stack = nstk;
     char stk[100];
@@ -75,16 +75,15 @@ FunctionDecl
     code += "\
             \t.text\n\
             \t.align    2\n\
-            \t.global   " + (string)func + "\n\
-            \t.type     @" + (string)func + "\n\
-            " + (string)func + ":\n\
+            \t.global   " + $1 + "\n\
+            \t.type     @" + $1 + "\n\
+            " + $1 + ":\n\
             \tadd       sp, sp, -" + (string)stk + "\n\
             \tsw        ra, " + offset_stk + "(sp)\n";
   }
   ExpressionList WORD_END Function {
-    char* func = &($11[2]);
     code += "\
-            \t.size     " + (string)$3 + ", .-" + (string)func + "\n\n";
+            \t.size     " + $1 + ", .-" + $1 + "\n\n";
   }
 ;
 ExpressionList
@@ -194,11 +193,11 @@ Expression
   }
 | Reg '[' INTEGER ']' '=' Reg {
     code += "\
-            \tsw        " + $1 + ", " + $6 + ", " + $3 + "\n";
+            \tsw        " + $6 + ", " + (string)$3 + "(" + $1 + ")\n";
   }
 | Reg '=' Reg '[' INTEGER ']' {
     code += "\
-            \tlw        " + $1 + ", " + $3 + ", " + $5 + "\n";
+            \tlw        " + $1 + ", " + (string)$5 + "(" + $3 + ")\n";
   }
 | WORD_IF Reg LogicalOp Reg WORD_GOTO Label {
     switch($3) {
@@ -291,7 +290,7 @@ Label
 : WORD_LABEL { $$ = $1; }
 ;
 Function
-: FUNCTION { $$ = $1; }
+: FUNCTION { $$ = &($1[2]); }
 ;
 Op2
 : LOGICOP {
