@@ -19,7 +19,7 @@ reg_a   (a0)|(a1)|(a2)|(a3)|(a4)|(a5)|(a6)|(a7)
 reg_t   (t0)|(t1)|(t2)|(t3)|(t4)|(t5)|(t6)
 reg     {reg_x}|{reg_s}|{reg_a}|{reg_t}
 func    f_{letter}+[A-Za-z0-9_]*
-logicop "=="|">"|"<"
+logicop "=="|">"|"<"|">="|"<="|"!="
 /* attention! arithop doesn't include '-' */
 arithop  "&&"|"||"|"+"|"*"|"/"|"%"
 

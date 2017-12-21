@@ -76,7 +76,7 @@ FunctionDecl
             \t.text\n\
             \t.align    2\n\
             \t.global   " + $1 + "\n\
-            \t.type     @" + $1 + "\n\
+            \t.type     " + $1 + ", @function\n\
             " + $1 + ":\n\
             \tadd       sp, sp, -" + (string)stk + "\n\
             \tsw        ra, " + offset_stk + "(sp)\n";
@@ -140,7 +140,12 @@ Expression
             \tor        " + $1 + ", " + $3 + ", " + $5 +"\n\
             \tsnez      " + $1 + ", " + $1 + "\n";
         break;
-      /* case NE: */
+      case NE: 
+        code +=
+            "\
+            \txor       " + $1 + ", " + $3 + ", " + $5 +"\n\
+            \tsnez      " + $1 + ", " + $1 + "\n";
+        break;
       case EQ:
         code +=
             "\
@@ -203,27 +208,27 @@ Expression
     switch($3) {
       case LT:
         code += "\
-            \tblt       " + $2 + ", " + $4 + ", " + $6 + "\n";
+            \tblt       " + $2 + ", " + $4 + ", ." + $6 + "\n";
         break;
       case GT:
         code += "\
-            \tbgt       " + $2 + ", " + $4 + ", " + $6 + "\n";
+            \tbgt       " + $2 + ", " + $4 + ", ." + $6 + "\n";
         break;
       case NE:
         code += "\
-            \tbne       " + $2 + ", " + $4 + ", " + $6 + "\n";
+            \tbne       " + $2 + ", " + $4 + ", ." + $6 + "\n";
         break;
       case EQ:
         code += "\
-            \tbeq       " + $2 + ", " + $4 + ", " + $6 + "\n";
+            \tbeq       " + $2 + ", " + $4 + ", ." + $6 + "\n";
         break;
       case LE:
         code += "\
-            \tble       " + $2 + ", " + $4 + ", " + $6 + "\n";
+            \tble       " + $2 + ", " + $4 + ", ." + $6 + "\n";
         break;
       case GE:
         code += "\
-            \tbge       " + $2 + ", " + $4 + ", " + $6 + "\n";
+            \tbge       " + $2 + ", " + $4 + ", ." + $6 + "\n";
         break;
       default:
         word_error("unsupported op for IF GOTO", "...");
@@ -231,7 +236,7 @@ Expression
   }
 | WORD_GOTO Label {
     code += "\
-            \tj         " + $2 + "\n";
+            \tj         ." + $2 + "\n";
   }
 | Label ':' {
     code += "\
@@ -299,10 +304,15 @@ Op2
         $$ = EQ;
         break;
       case '>':
-        $$ = GT;
+        if($1[1] != '=') $$ = GT;
+        else $$ = GE;
         break;
       case '<':
-        $$ = LT;
+        if($1[1] != '=') $$ = LT;
+        else $$ = LE;
+        break;
+      case '!':
+        $$ = NE;
         break;
       default:
         word_error("undefined LOGICOP", $1);
@@ -345,10 +355,15 @@ LogicalOp
         $$ = EQ;
         break;
       case '>':
-        $$ = GT;
+        if($1[1] != '=') $$ = GT;
+        else $$ = GE;
         break;
       case '<':
-        $$ = LT;
+        if($1[1] != '=') $$ = LT;
+        else $$ = LE;
+        break;
+      case '!':
+        $$ = NE;
         break;
       default:
         word_error("undefined LOGICOP", $1);
